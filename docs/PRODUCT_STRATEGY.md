@@ -125,7 +125,7 @@ Priority order from the research (my judgement, not measured demand). **Bold = s
 | 4 | **Verified-ish reviews & costs** (dimensions, last visited, conditions) | Trust | done; photo-verified visits missing |
 | 5 | **Discover along a route** | Fits the map | done (straight line) |
 | 6 | **AI planner** (itinerary from request + community pins) | Differentiator when fed community data | done |
-| 7 | Photo/video upload (Cloudflare R2) | Content is what draws people | medium |
+| 7 | **Photo upload (Cloudflare R2)** | Content is what draws people | done for place photos; video, avatars and itinerary/review photos are next |
 | 8 | Group polls: vote on destination/dates/hotels | Solves the first hurdle of group planning | medium |
 | 9 | AI natural-language search ("peaceful places within 100 km of Delhi under ₹2,000") | Needs enough community data first | medium |
 | 10 | AI review summaries ("what 200 travellers say") | Needs volume | small |

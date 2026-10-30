@@ -5,7 +5,7 @@ import type { Plan, PlanRequestT } from "./planSchema";
 import { SAMPLE_TRIPS } from "./sampleTrips";
 import type {
   Category, ConditionKind, Itinerary, ItineraryItem, Place, PlaceReport, PlaceStats, Profile, ProfileStats, ReportReason,
-  Review, Trip, TripExpense, TripMember, TripMessage, UserRating,
+  PlacePhoto, Review, Trip, TripExpense, TripMember, TripMessage, UserRating,
 } from "./types";
 
 type Stats = { place_id: string; avg_rating: number | null; review_count: number };
@@ -21,12 +21,16 @@ export async function listPlaces(category?: Category | "all"): Promise<Place[]> 
   if (error) throw error;
   const places = (data ?? []) as Place[];
   if (places.length === 0) return places;
-  const { data: stats } = await sb.from("place_stats").select("*").in("place_id", places.map((p) => p.id));
+  const ids = places.map((p) => p.id);
+  const { data: stats } = await sb.from("place_stats").select("*").in("place_id", ids);
   const byId = new Map((stats as Stats[] | null)?.map((s) => [s.place_id, s]));
+  const { data: covers } = await sb.from("place_covers").select("*").in("place_id", ids);
+  const coverById = new Map((covers as { place_id: string; storage_key: string }[] | null)?.map((c) => [c.place_id, c.storage_key]));
   return places.map((p) => ({
     ...p,
     avg_rating: byId.get(p.id)?.avg_rating ?? null,
     review_count: byId.get(p.id)?.review_count ?? 0,
+    cover_key: coverById.get(p.id) ?? null,
   }));
 }
 
@@ -551,4 +555,37 @@ export async function deleteExpense(id: string): Promise<void> {
   const { sb } = await requireUser();
   const { error } = await sb.from("trip_expenses").delete().eq("id", id);
   if (error) throw error;
+}
+
+// ---------- Photos (Phase 6, stored in Cloudflare R2) ----------
+export async function listPlacePhotos(placeId: string): Promise<PlacePhoto[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data, error } = await sb.from("place_photos").select("*, profiles(display_name)")
+    .eq("place_id", placeId).order("created_at");
+  if (error) throw error;
+  return (data ?? []).map((r: Record<string, unknown>) => ({
+    ...(r as unknown as PlacePhoto),
+    uploader: (r.profiles as { display_name: string | null } | null)?.display_name ?? null,
+  }));
+}
+
+/** Attach an already-uploaded image (by storage key) to a place. */
+export async function addPlacePhoto(placeId: string, storageKey: string): Promise<void> {
+  const { sb, uid } = await requireUser();
+  const { error } = await sb.from("place_photos").insert({ place_id: placeId, user_id: uid, storage_key: storageKey });
+  if (error) throw error;
+  track("photo_uploaded");
+}
+
+export async function deletePlacePhoto(id: string): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) throw new Error("Supabase is not configured");
+  const { data } = await sb.auth.getSession();
+  if (!data.session) throw new Error("Please log in first");
+  const res = await fetch(`/api/upload?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${data.session.access_token}` },
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Could not delete the photo.");
 }

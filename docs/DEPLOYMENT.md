@@ -13,6 +13,7 @@ Everything the app needs is in `web/`. This is a one-time setup of about 20 minu
    3. `phase3_safety.sql`
    4. `phase4_itineraries.sql`
    5. `phase5_community.sql`
+   6. `phase6_photos.sql`
 3. **Project Settings -> API**: copy the **Project URL** and the **anon public** key. (Never use the `service_role` key in this app.)
 4. **Authentication -> Providers**: keep Email enabled. For phone verification, enable Phone and connect an SMS provider (Twilio, MessageBird, Vonage...). SMS costs money.
 5. After you know your site URL (step 4), set **Authentication -> URL Configuration**: Site URL = your Vercel URL, and add the same URL (plus `http://localhost:3000`) to Redirect URLs. Without this, the confirmation emails link to the wrong place.
@@ -50,6 +51,10 @@ Everything the app needs is in `web/`. This is a one-time setup of about 20 minu
 2. Go back to Supabase step 5 and set the Site URL / Redirect URLs to your Vercel URL.
 3. Smoke test, in order: sign up and confirm the email, pin a place, post a trip, write a review, create an itinerary with the AI planner (takes up to about a minute).
 4. A plan call can take close to a minute, and the route allows up to 120 seconds. If plans time out on your Vercel plan, check the maximum function duration allowed for your plan and reduce days per plan or lower `maxDuration` in `app/api/plan/route.ts`.
+
+## 4b. Photo uploads (optional but recommended)
+
+Follow `docs/CLOUDFLARE_R2_SETUP.md` (all resources named `yorvia-…`). Without it the app still works; people just can't upload photos.
 
 ## 5. Before real users
 

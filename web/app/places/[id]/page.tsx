@@ -3,11 +3,14 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import MapLoader from "@/components/MapLoader";
+import PhotoGallery from "@/components/PhotoGallery";
+import PhotoUploader from "@/components/PhotoUploader";
 import ShareButton from "@/components/ShareButton";
 import {
-  createReview, getPlace, getPlaceStats, listPlaceReports, listReviews, listSavedIds, reportCondition, toggleSave,
+  createReview, getPlace, getPlaceStats, listPlacePhotos, listPlaceReports, listReviews, listSavedIds, reportCondition,
+  toggleSave,
 } from "@/lib/data";
-import { CONDITION_KINDS, type ConditionKind, type Place, type PlaceReport, type PlaceStats, type Review } from "@/lib/types";
+import { CONDITION_KINDS, type ConditionKind, type Place, type PlacePhoto, type PlaceReport, type PlaceStats, type Review } from "@/lib/types";
 import { useUser } from "@/lib/useUser";
 
 export default function PlacePage() {
@@ -17,6 +20,7 @@ export default function PlacePage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [saved, setSaved] = useState(false);
   const [stats, setStats] = useState<PlaceStats | null>(null);
+  const [photos, setPhotos] = useState<PlacePhoto[]>([]);
   const [conditions, setConditions] = useState<PlaceReport[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -26,6 +30,7 @@ export default function PlacePage() {
       setPlace(await getPlace(id));
       setReviews(await listReviews(id));
       setStats(await getPlaceStats(id));
+      setPhotos(await listPlacePhotos(id));
       setConditions(await listPlaceReports(id));
       setSaved((await listSavedIds()).includes(id));
     } catch (e) {
@@ -105,6 +110,8 @@ export default function PlacePage() {
       <p className="muted">{avg ? `★ ${avg} from ${reviews.length} review(s)` : "No reviews yet"}</p>
       <p><button className="chip" onClick={onSave}>{saved ? "★ Saved" : "☆ Save"}</button> <ShareButton title={place.title} /></p>
       <MapLoader height={300} places={[place]} center={[place.lng, place.lat]} zoom={9} />
+      <PhotoGallery photos={photos} me={user?.id ?? null} placeId={id} onChange={load} />
+      {user && <PhotoUploader placeId={id} onDone={load} />}
       {place.photo_url && <p><img src={place.photo_url} alt={place.title} style={{ maxWidth: "100%", borderRadius: 12 }} /></p>}
       {place.description && <p>{place.description}</p>}
       {place.best_season && <p><strong>Best season:</strong> {place.best_season}</p>}

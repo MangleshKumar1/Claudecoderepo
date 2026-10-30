@@ -19,6 +19,7 @@ export type Place = {
   created_at: string;
   avg_rating?: number | null;
   review_count?: number;
+  cover_key?: string | null; // storage key of the first uploaded photo
 };
 
 export type Review = {
@@ -207,4 +208,14 @@ export type TripExpense = {
   category: ExpenseCategory;
   created_at: string;
   payer?: string | null;
+};
+
+export type PlacePhoto = {
+  id: string;
+  place_id: string;
+  user_id: string;
+  storage_key: string;
+  caption: string | null;
+  created_at: string;
+  uploader?: string | null;
 };
