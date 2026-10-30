@@ -80,3 +80,59 @@ A Spring Boot backend against the same Postgres is a valid later step, if you wa
 - You have a team that prefers to run its own infrastructure.
 
 Until then, building and validating the product is worth far more than moving infrastructure.
+
+---
+
+# Update (Phase 12): alternatives, replicating, and keeping the bill small
+
+> Prices change and I can't check them from here. Wherever money comes up, read the provider's pricing page before deciding.
+
+## Is there another option instead of Supabase?
+
+Yes, but "instead of Supabase" means different amounts of work, because the app's browser code talks to Supabase's services directly (database API, login, realtime chat).
+
+| Option | What it means for this app | Effort | My view |
+|---|---|---|---|
+| **Supabase hosted** (now) | Nothing changes | none | Best while you validate the idea |
+| **Self-host Supabase** (it is open source, runs in Docker) | The app works **unchanged**. You run the servers, backups, upgrades and security patches yourself | medium, plus ongoing operations work | The lowest-effort way to avoid usage-based fees, if you have the time and skills. A mistake here can mean downtime or data loss |
+| **Another managed PostgreSQL** (Neon, Railway, Render, AWS RDS, Google Cloud SQL, DigitalOcean) | The **database and every security rule are proven to run** on plain Postgres (tested, see below). But you must also provide **login** (Auth.js, Clerk, Keycloak...), an **API layer** to replace the Supabase calls in `lib/data.ts` (the self-hostable open-source PostgREST can do this), and **realtime chat** (or keep the 20-second polling that already exists) | weeks | Reasonable later, if you have a team. Don't start here |
+| **Firebase, PocketBase, Appwrite, MongoDB** | Different data models and security languages. Not a migration: a **rewrite** of the data layer and every access rule, with all the testing again | large | Not recommended |
+
+## Can it be replicated?
+
+**Yes. Nothing about your data or rules is trapped.** What is proven (all tested on a local Postgres with **no Supabase involved**):
+
+1. The 12 SQL files build the whole database, including all 116 security rules and the triggers, on plain PostgreSQL once you run `web/scripts/plain-postgres-auth-shim.sql` (it supplies the `anon`/`authenticated` roles and `auth.uid()` that Supabase normally provides).
+2. `web/scripts/backup-db.sh` and `restore-db.sh` copied the data (and, with the accounts file, the user accounts) onto a brand-new server. Counts matched and the privacy rules still hid a private collection from a stranger.
+3. A restore that fails changes nothing, and recovery after accidental data loss works.
+
+What is **not** proven or built: running the backup against your real Supabase project (only a local Postgres), restoring Supabase's own account tables into a different Supabase project, and the login/API/realtime replacements listed in the table above.
+
+## Will Supabase take a big sum later?
+
+It can get expensive **if usage grows a lot and you do nothing**, but several things in this app are set up to limit that:
+
+- **Photos and video, usually the biggest cost, are in Cloudflare R2**, not in Supabase.
+- **AI calls are capped per person per day** and cost Anthropic, not Supabase.
+- **Weather is called from the browser** and costs nothing here.
+- Notifications are auto-deleted after 60 days.
+
+What typically drives a managed-Postgres bill: database size, bandwidth, number of monthly active users, and compute size. **The one thing that will grow quietly in this app is the `events` table (analytics)**, plus the small usage logs. Keep them trimmed. Run this in the Supabase SQL editor now and then (or schedule it with the `pg_cron` extension if your plan offers it):
+
+```sql
+delete from public.events        where created_at < now() - interval '90 days';
+delete from public.ai_usage      where created_at < now() - interval '30 days';
+delete from public.ai_plan_log   where created_at < now() - interval '30 days';
+delete from public.media_uploads where created_at < now() - interval '90 days';
+```
+
+(The 7-day return-rate metric needs only the last few weeks of events, so 90 days is plenty.)
+
+**Set your own tripwires.** Pick a number: "if the monthly bill passes ₹X, or the database passes Y GB, I review hosting". Check Supabase's usage page monthly. Moving is only worth the effort if the cost is really in the database (not in media you could put on R2) and the saving is bigger than the time it would take.
+
+## What to do now
+
+1. Run `backup-db.sh` against your Supabase project once you have it, and do a **test restore into a throwaway database**. Then you *know* it works for you.
+2. Keep database calls in `lib/data.ts` (the app's one door to the database), so a future move touches one file.
+3. Keep every database change as a numbered SQL file, never by hand.
+4. Don't pay for anything until the free plan actually blocks you, but know its limits. Check the current free-plan limits (database size, bandwidth, whether idle projects pause) before inviting real users.

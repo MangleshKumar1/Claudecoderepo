@@ -15,7 +15,8 @@ A travel community platform. Pin beautiful places on a map, post photos and stor
 6. [Before real users arrive](#6-before-real-users-arrive)
 7. [Running it on your own computer](#7-running-it-on-your-own-computer)
 8. [What's built](#8-whats-built)
-9. [More documents](#9-more-documents)
+9. [Backups, and getting out of Supabase](#9-backups-and-getting-out-of-supabase-if-you-ever-need-to)
+10. [More documents](#10-more-documents)
 
 ---
 
@@ -41,7 +42,7 @@ Keep every key and secret in a password manager. **Never paste secrets into GitH
 ### Step 1: Supabase (database and login)
 
 - [ ] Create a project at https://supabase.com. Choose a region near your users (for India, Mumbai if offered). Save the database password.
-- [ ] Open **SQL Editor -> New query**. Run these 11 files from `web/supabase/` **in this order, once each** (open the file on GitHub, copy all, paste, Run):
+- [ ] Open **SQL Editor -> New query**. Run these 12 files from `web/supabase/` **in this order, once each** (open the file on GitHub, copy all, paste, Run):
 
   | # | File | What it adds |
   |---|---|---|
@@ -56,6 +57,7 @@ Keep every key and secret in a password manager. **Never paste secrets into GitH
   | 9 | `phase9_utilities.sql` | Place essentials, cost reality, private emergency contacts |
   | 10 | `phase10_ai_tools.sql` | Usage log for the AI search, summary and photo tools |
   | 11 | `phase11_directory_admin.sql` | Business directory, enquiries, admin powers |
+  | 12 | `phase12_moderation_notifications.sql` | Account suspension, in-app notifications |
 
   Running a file twice gives "already exists" errors. That's harmless, but don't do it on purpose.
 - [ ] **Project Settings -> API**: copy two values for later:
@@ -90,6 +92,10 @@ Full detail with the CORS text to paste: **[docs/CLOUDFLARE_R2_SETUP.md](docs/CL
 
 - [ ] Create a free key at https://www.maptiler.com (or Stadia Maps).
 - [ ] Your style address looks like `https://api.maptiler.com/maps/streets-v2/style.json?key=YOUR_KEY` -> becomes `NEXT_PUBLIC_MAP_STYLE_URL`. Without it the app uses demo tiles, which are for development only.
+
+### Step 4b: Road routing (optional)
+
+- [ ] Create a free key at https://openrouteservice.org (sign up, then "Request a token") -> becomes `ORS_API_KEY` (secret). Without it, "Along a route" still works using a straight line. With it, the route follows real roads and shows driving distance and time (logged-in users only, 30 routes per person per day by default).
 
 ### Step 5: Vercel (the website)
 
@@ -130,6 +136,8 @@ Where to set them: **Vercel -> Project -> Settings -> Environment Variables**, a
 | `NEXT_PUBLIC_MEDIA_BASE_URL` | Required for photos | Your bucket's public address | No | `https://media.your-domain.com`, no trailing slash |
 | `UPLOADS_PER_DAY` | Optional | You choose | No | default `30` per user per day |
 | `AI_SEARCHES_PER_DAY` / `AI_SUMMARIES_PER_DAY` / `AI_IDENTIFY_PER_DAY` | Optional | You choose | No | Per-user daily caps for AI search, review summaries and photo recognition. Defaults `20` / `20` / `10` |
+| `ORS_API_KEY` | Optional | openrouteservice.org free token | **Yes** | Turns on road routing. Server-only |
+| `ROUTES_PER_DAY` | Optional | You choose | No | Road routes per person per day. Default `30` |
 | `NEXT_PUBLIC_GOOGLE_LOGIN` | Optional | You set it to `true` after enabling Google in Supabase | No | Shows the "Continue with Google" button |
 | `NEXT_PUBLIC_BOOKING_AID` | Optional | Your Booking.com affiliate id, if you join their programme | No | Added to "Find stays" links. When set, the page says you may earn a commission |
 | `NEXT_PUBLIC_MAP_STYLE_URL` | Recommended | MapTiler / Stadia | The key inside it is visible in the browser; restrict it by domain in their dashboard | `https://api.maptiler.com/maps/streets-v2/style.json?key=…` |
@@ -170,7 +178,7 @@ There is an **admin panel at `/admin`** (a "🛡️ Admin" link also appears und
    ```
 4. Reload the site. You'll now see **Admin** under "More" and `/admin` will open.
 
-What admins can do: see growth numbers (people seen, contributors, return rate), triage user **reports** (open / reviewing / actioned / dismissed), **verify or hide business listings**, and **remove** other people's posts, comments and photos (a "remove (admin)" button appears next to them). Admins cannot read private data such as enquiry contact details or emergency contacts. To suspend an account, use Supabase -> Authentication -> Users. When you remove a photo, its file may stay in Cloudflare R2. It costs almost nothing, but you can delete it there too.
+What admins can do: see growth numbers (people seen, contributors, return rate), triage user **reports** (open / reviewing / actioned / dismissed), **verify or hide business listings**, **remove** other people's posts, comments and photos (a "remove (admin)" button appears next to them), and **suspend or reinstate accounts** (button at the top of a person's profile). A suspended person can still log in and read, but cannot post, comment, message, enquire, follow, upload or use AI, and they see a banner explaining why. People you report get a notification when you mark their report actioned or dismissed. Admins cannot read private data such as enquiry contact details or emergency contacts. To permanently delete an account, use Supabase -> Authentication -> Users. When you remove a photo, its file may stay in Cloudflare R2. It costs almost nothing, but you can delete it there too.
 
 **Suggested checklist before you mark a business "Verified"** (the badge tells travellers the YORVIA team checked it, so only give it when you have): confirm the owner's identity, confirm the business is real and operating (for example a phone call or a visit), check any required licences for that kind of business (for example tourism registration for operators), and look for complaints. Remove the badge if problems appear.
 
@@ -191,6 +199,8 @@ What admins can do: see growth numbers (people seen, contributors, return rate),
 | Map looks plain or tiles don't load | Set `NEXT_PUBLIC_MAP_STYLE_URL` |
 | "Continue with Google" button missing | Set `NEXT_PUBLIC_GOOGLE_LOGIN=true` (after enabling Google in Supabase) and redeploy |
 | Google login fails with a redirect error | The redirect URI in Google Cloud must exactly match the callback URL Supabase shows, and Supabase's Site URL / Redirect URLs must include your site address |
+| Notifications bell never shows anything | `phase12_moderation_notifications.sql` hasn't been run. It checks for new items once a minute |
+| "Your account is suspended" banner | An admin suspended the account. Lift it from that person's profile (as an admin) |
 | `/admin` says "for YORVIA admins" | Your user id isn't in the `admins` table yet. See section 4 |
 | AI search / summary / photo tool says it isn't set up | `ANTHROPIC_API_KEY` is missing, or `phase10_ai_tools.sql` hasn't been run |
 | "Daily limit reached" on an AI tool | Per-user cap. Raise `AI_SEARCHES_PER_DAY` etc., or wait 24 hours |
@@ -259,6 +269,7 @@ NEXT_PUBLIC_MEDIA_BASE_URL=https://media.your-domain.com
 | 9 | Weather forecast with alerts, fuel cost estimate, Discover / weekend explorer / budget finder / surprise me, place essentials (toilet, parking, fees...), cost reality (advertised vs paid), emergency page with private contacts and one-tap location sharing |
 | 10 | AI tools: plain-language place search, review summaries, "what place is this?" from a photo |
 | 11 | Business directory (homestays, guides, vehicles, activities) with enquiries, an admin panel, optional Google login |
+| 12 | Account suspension by admins, in-app notifications (bell + page) for enquiries, replies, join requests and decisions, comments, followers, ratings and report updates, optional road routing |
 | UI | New design, dark mode, mobile bottom bar, installable app (PWA) with an offline page, save itineraries for offline use |
 
 ### Not built, and why
@@ -269,12 +280,30 @@ NEXT_PUBLIC_MEDIA_BASE_URL=https://media.your-domain.com
 | **TripCarry (carrying parcels between travellers)** | Real legal exposure: carriers can be held liable for what is in a parcel. Needs legal advice, ID checks, escrow payments and a prohibited-items process first. See `docs/INTEGRATIONS_AND_PARCELS.md` |
 | **Native Android/iOS apps** | The website works as an installable app (PWA). Store apps are a separate project and cost (Apple $99/year, Google $25 once) |
 | **Toll costs, live crowd levels, live trip tracking** | No reliable data source wired in. Showing guesses as facts would mislead people |
-| **Real road routing for "Along a route"** | Uses a straight-line corridor. Road routing needs a routing provider key (Mapbox, OpenRouteService) and PostGIS |
-| **Email / push notifications** (for enquiries, join requests, replies) | Needs an email sender and notification setup. Today people check the site |
-| **Account suspension screen** | Use Supabase -> Authentication -> Users for now |
+| **Road routing without a key** | Optional: add `ORS_API_KEY` (Step 4b). Without it a straight line is used |
+| **Email / push notifications** | The in-app bell works. Email and phone push need an email sender (for example Resend) or a push service, plus server code that can look up people's email addresses |
 | **Group "AI best compromise" voting, creator earnings, vendor payouts** | Later, once there are users to learn from |
 
-## 9. More documents
+## 9. Backups, and getting out of Supabase if you ever need to
+
+Your data is plain PostgreSQL and the app's whole database setup is the 12 SQL files, so you are never locked in. Two scripts in `web/scripts/` make that real (tested on a local Postgres; not yet run against Supabase itself):
+
+```bash
+# Save a backup (get the URL from Supabase: Project Settings -> Database -> Connection string -> URI)
+DATABASE_URL='postgresql://postgres:YOUR-PASSWORD@db.xxxx.supabase.co:5432/postgres' ./web/scripts/backup-db.sh
+```
+```bash
+# Put it back after a mistake (same project: the accounts are still there)
+TARGET_URL='postgresql://...' ./web/scripts/restore-db.sh backups/yorvia-20261030-120000.dump
+```
+
+- Needs the PostgreSQL client tools (`pg_dump`, `pg_restore`, `psql`) on your computer.
+- The restore is **all-or-nothing**: if anything goes wrong, nothing is changed. It loads data into tables that already exist (so on a new server, run the SQL files first), and it asks you to type `yes`.
+- To **move to another server**, also back up the accounts (`INCLUDE_ACCOUNTS=1`) and restore with `ACCOUNTS_FILE=...`. That file holds emails and password hashes, so keep it private.
+- Do a test restore into a throwaway database now and then. A backup you have never restored is only a hope.
+- Full explanation of Supabase alternatives, what moving would involve, and how to keep the bill small: [docs/INFRASTRUCTURE_DECISION.md](docs/INFRASTRUCTURE_DECISION.md).
+
+## 10. More documents
 
 - [docs/PRODUCT_STRATEGY.md](docs/PRODUCT_STRATEGY.md): research, competitors, validation targets, backlog, open decisions
 - [docs/PLAN.md](docs/PLAN.md): the original plan, features and revenue ideas
