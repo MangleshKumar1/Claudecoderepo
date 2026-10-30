@@ -218,3 +218,10 @@ pre.notes{white-space:pre-wrap;font:inherit;background:var(--surface);border:1px
 .wxe{font-size:1.6rem}
 .aiBox{border-color:color-mix(in srgb,var(--brand) 40%,var(--border))}
 .aiBox summary{color:var(--brand-dark)}
+
+/* ----- notifications ----- */
+.bell{position:relative;padding:6px 10px}
+.bell .dot{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--danger);color:#fff;font-size:.7rem;font-weight:700;display:grid;place-items:center}
+.notif{display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;cursor:pointer;font:inherit}
+.notif .e{font-size:1.4rem}
+.notif.unread{border-left:4px solid var(--brand);background:color-mix(in srgb,var(--brand-soft) 45%,var(--surface))}

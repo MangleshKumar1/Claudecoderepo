@@ -10,15 +10,18 @@ import VerifiedBadge from "@/components/VerifiedBadge";
 import { computeBadges, levelName, reputation } from "@/lib/badges";
 import { catEmoji } from "@/lib/categories";
 import {
-  getActivity, getProfile, getProfileStats, isFollowing, listBlocked, listCollections, listPosts, listRatingsFor,
+  adminIsSuspended, adminSuspend, adminUnsuspend, getActivity, getProfile, getProfileStats, isFollowing, listBlocked, listCollections, listPosts, listRatingsFor,
   listVisitedPlaces, setBlocked, setFollowing,
 } from "@/lib/data";
 import type { Activity, Collection, Post, Profile, ProfileStats, UserRating } from "@/lib/types";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 import { useUser } from "@/lib/useUser";
 
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useUser();
+  const isAdmin = useIsAdmin();
+  const [suspended, setSuspended] = useState(false);
   const [profile, setProfile] = useState<Profile | null | undefined>(undefined);
   const [stats, setStats] = useState<ProfileStats | null>(null);
   const [activity, setActivity] = useState<Activity | null>(null);
@@ -42,11 +45,12 @@ export default function ProfilePage() {
       if (user) {
         setBlockedState((await listBlocked()).some((b) => b.id === id));
         setFollowingState(await isFollowing(id));
+        if (isAdmin) setSuspended(await adminIsSuspended(id));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     }
-  }, [id, user]);
+  }, [id, user, isAdmin]);
   useEffect(() => { load(); }, [load]);
 
   async function toggleBlock() {
@@ -99,6 +103,21 @@ export default function ProfilePage() {
         ) : <Link href="/login" className="btn">Log in to follow</Link>}{" "}
         <ShareButton title={`${profile.display_name ?? "A traveller"} on YORVIA`} label="Share profile" />
       </p>
+      {isAdmin && !isMe && (
+        <div className="alert warn">
+          <strong>Admin:</strong> {suspended ? "This account is suspended." : "This account is active."}{" "}
+          {suspended ? (
+            <button className="chip" onClick={async () => { try { await adminUnsuspend(id); setSuspended(false); } catch (e) { setError(e instanceof Error ? e.message : "Failed"); } }}>Lift suspension</button>
+          ) : (
+            <button className="chip" onClick={async () => {
+              const why = prompt("Reason for suspending (the person will see this):");
+              if (why === null) return;
+              try { await adminSuspend(id, why.trim()); setSuspended(true); } catch (e) { setError(e instanceof Error ? e.message : "Failed"); }
+            }}>Suspend account</button>
+          )}
+          <small className="muted"> A suspended person can still log in and read, but can't post, comment, message, upload or use AI.</small>
+        </div>
+      )}
       {error && <p className="error">{error}</p>}
 
       <div className="grid stats">

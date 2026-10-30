@@ -12,6 +12,8 @@ type Props = {
   picked?: { lat: number; lng: number } | null;
   /** Extra labelled markers, e.g. the start and end of a route. */
   extra?: { lat: number; lng: number; color: string; label: string }[];
+  /** A route to draw, as [lat, lng] points. The map zooms to fit it. */
+  line?: [number, number][];
   center?: [number, number]; // [lng, lat]
   zoom?: number;
 };
@@ -20,7 +22,7 @@ type Props = {
 // style from MapTiler, Stadia Maps, etc. (e.g. https://api.maptiler.com/maps/streets-v2/style.json?key=YOUR_KEY).
 const STYLE = process.env.NEXT_PUBLIC_MAP_STYLE_URL || "https://demotiles.maplibre.org/style.json";
 
-export default function Map({ places = [], height = 480, onPick, picked, extra = [], center, zoom }: Props) {
+export default function Map({ places = [], height = 480, onPick, picked, extra = [], line, center, zoom }: Props) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markers = useRef<maplibregl.Marker[]>([]);
@@ -81,6 +83,28 @@ export default function Map({ places = [], height = 480, onPick, picked, extra =
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(extra)]);
+
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return;
+    const apply = () => {
+      const coords = (line ?? []).map(([la, ln]) => [ln, la]);
+      const data = { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: coords } } as unknown as GeoJSON.Feature;
+      const src = m.getSource("route-line") as maplibregl.GeoJSONSource | undefined;
+      if (src) src.setData(data);
+      else {
+        m.addSource("route-line", { type: "geojson", data });
+        m.addLayer({ id: "route-line", type: "line", source: "route-line", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#2563eb", "line-width": 5, "line-opacity": 0.85 } });
+      }
+      if (coords.length >= 2) {
+        const b = new maplibregl.LngLatBounds(coords[0] as [number, number], coords[0] as [number, number]);
+        coords.forEach((c) => b.extend(c as [number, number]));
+        m.fitBounds(b, { padding: 40, duration: 0 });
+      }
+    };
+    if (m.isStyleLoaded()) apply(); else m.once("load", apply);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(line)]);
 
   return <div ref={el} style={{ height, width: "100%", borderRadius: 12, overflow: "hidden" }} />;
 }
