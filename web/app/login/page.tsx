@@ -11,6 +11,15 @@ export default function Login() {
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const googleOn = process.env.NEXT_PUBLIC_GOOGLE_LOGIN === "true";
+  async function google() {
+    const sb = getSupabase();
+    if (!sb) return setMsg({ text: "Supabase is not configured yet.", ok: false });
+    setBusy(true);
+    const { error } = await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
+    if (error) { setBusy(false); setMsg({ text: error.message, ok: false }); }
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const sb = getSupabase();
@@ -30,6 +39,12 @@ export default function Login() {
   return (
     <>
       <h1>{mode === "login" ? "Log in" : "Create account"}</h1>
+      {googleOn && (
+        <>
+          <p><button type="button" className="btn ghost lg" style={{ width: "100%", maxWidth: 580 }} disabled={busy} onClick={google}>Continue with Google</button></p>
+          <p className="muted" style={{ maxWidth: 580 }}><small>or use email</small></p>
+        </>
+      )}
       <form className="stack" onSubmit={submit}>
         <label>Email<input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></label>
         <label>Password<input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} /></label>

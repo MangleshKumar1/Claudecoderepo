@@ -3,6 +3,7 @@ import { useState } from "react";
 import { deletePlacePhoto } from "@/lib/data";
 import { mediaUrl } from "@/lib/media";
 import type { PlacePhoto } from "@/lib/types";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 import ReportButton from "./ReportButton";
 
 export default function PhotoGallery({ photos, me, placeId, onChange }: {
@@ -10,6 +11,7 @@ export default function PhotoGallery({ photos, me, placeId, onChange }: {
 }) {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const isAdmin = useIsAdmin();
   if (photos.length === 0) return null;
 
   async function remove(id: string) {
@@ -34,7 +36,10 @@ export default function PhotoGallery({ photos, me, placeId, onChange }: {
               {p.user_id === me ? (
                 <button className="link error" disabled={busyId === p.id} onClick={() => remove(p.id)}>delete</button>
               ) : (
-                <ReportButton targetUserId={p.user_id} label="report" />
+                <>
+                  <ReportButton targetUserId={p.user_id} label="report" />
+                  {isAdmin && <> <button className="link error" disabled={busyId === p.id} onClick={() => remove(p.id)}>remove (admin)</button></>}
+                </>
               )}
             </figcaption>
           </figure>

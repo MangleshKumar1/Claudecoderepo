@@ -4,6 +4,7 @@ import { useState } from "react";
 import { addComment, deleteComment, deletePost, listComments, setLiked } from "@/lib/data";
 import { mediaUrl, uploadsEnabled } from "@/lib/media";
 import { timeAgo } from "@/lib/time";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 import type { Post, PostComment } from "@/lib/types";
 import Avatar from "./Avatar";
 import ReportButton from "./ReportButton";
@@ -16,6 +17,7 @@ export default function PostCard({ post, me, onDeleted }: { post: Post; me: stri
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const isAdmin = useIsAdmin();
 
   async function like() {
     if (!me) return setError("Log in to like posts.");
@@ -84,6 +86,7 @@ export default function PostCard({ post, me, onDeleted }: { post: Post; me: stri
         {me === p.user_id
           ? <button className="link error" disabled={busy} onClick={remove}>delete</button>
           : <ReportButton targetUserId={p.user_id} label="report" />}
+        {isAdmin && me !== p.user_id && <button className="link error" disabled={busy} onClick={remove}>remove (admin)</button>}
       </div>
       {open && (
         <div className="comments">
@@ -96,7 +99,7 @@ export default function PostCard({ post, me, onDeleted }: { post: Post; me: stri
                 <Link href={`/profile/${c.user_id}`}><strong>{c.author_name ?? "Traveller"}</strong></Link>{" "}
                 <small className="muted">{timeAgo(c.created_at)}</small>
                 <div>{c.body}</div>
-                {(me === c.user_id || me === p.user_id) && (
+                {(me === c.user_id || me === p.user_id || isAdmin) && (
                   <button className="link error" onClick={() => deleteComment(c.id).then(async () => { setComments(await listComments(p.id)); setP((x) => ({ ...x, comments: Math.max(0, x.comments - 1) })); }).catch((e) => setError(e.message))}><small>delete</small></button>
                 )}
               </div>

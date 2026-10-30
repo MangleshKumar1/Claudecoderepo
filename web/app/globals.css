@@ -29,7 +29,7 @@ img{max-width:100%}
 @media (max-width:760px){.container{padding-bottom:96px}}
 
 /* ----- header & navigation ----- */
-.banner{background:var(--warn-bg);color:var(--warn-text);padding:9px 16px;font-size:.88rem;text-align:center}
+.banner{background:var(--warn-bg);color:var(--warn-text);padding:7px 16px;font-size:.84rem;text-align:center}
 .banner code{background:rgba(0,0,0,.08);padding:1px 5px;border-radius:5px}
 .header{position:sticky;top:0;z-index:40;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--border)}
 .brand{display:inline-flex;align-items:center;gap:9px;font-weight:800;font-size:1.15rem;letter-spacing:.04em;color:var(--text)}

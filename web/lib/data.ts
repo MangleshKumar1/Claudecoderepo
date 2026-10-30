@@ -5,8 +5,8 @@ import type { Plan, PlanRequestT } from "./planSchema";
 import { SAMPLE_TRIPS } from "./sampleTrips";
 import { uploadImage } from "./upload";
 import type {
-  Activity, Category, Collection, ConditionKind, Itinerary, ItineraryItem, Place, PlaceReport, PlaceStats, Profile, ProfileStats, ReportReason,
-  PlacePhoto, Poll, PollKind, Post, PostComment, Review, Trip, TripExpense, TripMember, TripMessage, UserRating,
+  Activity, Category, Collection, ConditionKind, Enquiry, Itinerary, ItineraryItem, Place, PlaceReport, PlaceStats, Profile, ProfileStats, ReportReason,
+  Listing, ListingKind, PlacePhoto, Poll, PollKind, Post, PostComment, PriceUnit, Review, Trip, TripExpense, TripMember, TripMessage, UserRating,
 } from "./types";
 
 type Stats = { place_id: string; avg_rating: number | null; review_count: number };
@@ -918,5 +918,163 @@ export async function addContact(c: { name: string; phone: string; relation: str
 export async function deleteContact(id: string): Promise<void> {
   const { sb } = await requireUser();
   const { error } = await sb.from("emergency_contacts").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// ---------- Directory (Phase 11) ----------
+
+type ListingRow = Listing & { profiles?: { display_name: string | null } | null };
+const toListing = ({ profiles, ...l }: ListingRow): Listing => ({ ...l, owner_name: profiles?.display_name ?? null });
+
+/** `includeHidden` only has an effect for admins: the database still decides what each person may see. */
+export async function listListings(opts: { kind?: ListingKind | "all"; mine?: boolean; includeHidden?: boolean } = {}): Promise<Listing[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  let q = sb.from("listings").select("*, profiles(display_name)").order("verified", { ascending: false }).order("created_at", { ascending: false }).limit(100);
+  if (opts.mine) {
+    const { data: u } = await sb.auth.getUser();
+    if (!u.user) return [];
+    q = q.eq("owner_id", u.user.id);
+  } else if (!opts.includeHidden) {
+    q = q.eq("status", "active").eq("hidden_by_admin", false);
+  }
+  if (opts.kind && opts.kind !== "all") q = q.eq("kind", opts.kind);
+  const { data, error } = await q;
+  if (error) throw error;
+  return ((data ?? []) as ListingRow[]).map(toListing);
+}
+
+export async function getListing(id: string): Promise<Listing | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data, error } = await sb.from("listings").select("*, profiles(display_name)").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data ? toListing(data as ListingRow) : null;
+}
+
+export type ListingInput = {
+  kind: ListingKind; name: string; description: string | null; city: string | null;
+  price_from: number | null; price_unit: PriceUnit | null; website: string | null; photo_key?: string | null;
+};
+
+export async function createListing(input: ListingInput): Promise<string> {
+  const { sb, uid } = await requireUser();
+  const { data, error } = await sb.from("listings").insert({ ...input, owner_id: uid }).select("id").single();
+  if (error) throw new Error(error.code === "23514" ? "Check the website (it must start with https://) and the other fields." : error.message);
+  track("listing_created", { kind: input.kind });
+  return data.id as string;
+}
+
+export async function updateListing(id: string, patch: Partial<ListingInput> & { status?: "active" | "hidden" }): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from("listings").update(patch).eq("id", id);
+  if (error) throw new Error(error.code === "23514" ? "Check the website (it must start with https://) and the other fields." : error.message);
+}
+
+export async function deleteListing(id: string): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from("listings").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function sendEnquiry(input: { listing_id: string; message: string; contact: string; start_date: string | null; end_date: string | null; people: number | null }): Promise<void> {
+  const { sb, uid } = await requireUser();
+  const { error } = await sb.from("enquiries").insert({ ...input, from_user: uid });
+  if (error) throw new Error(/several enquiries|Daily enquiry/.test(error.message) ? error.message : error.code === "42501" ? "You can't send an enquiry to this business." : error.message);
+  track("enquiry_sent");
+}
+
+/** Enquiries received by the business owner for one listing. */
+export async function listEnquiriesFor(listingId: string): Promise<Enquiry[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data, error } = await sb.from("enquiries").select("*, profiles(display_name)").eq("listing_id", listingId).order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((r: Record<string, unknown>) => ({ ...(r as unknown as Enquiry), traveller: (r.profiles as { display_name: string | null } | null)?.display_name ?? null }));
+}
+
+/** Enquiries you sent as a traveller. */
+export async function listMyEnquiries(): Promise<Enquiry[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data: u } = await sb.auth.getUser();
+  if (!u.user) return [];
+  const { data, error } = await sb.from("enquiries").select("*, listings(name)").eq("from_user", u.user.id).order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((r: Record<string, unknown>) => ({ ...(r as unknown as Enquiry), listing_name: (r.listings as { name: string } | null)?.name ?? null }));
+}
+
+export async function replyToEnquiry(id: string, reply: string | null, status: "replied" | "closed"): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from("enquiries").update({ owner_reply: reply, status, replied_at: reply ? new Date().toISOString() : null }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function countNewEnquiries(listingIds: string[]): Promise<Record<string, number>> {
+  const sb = getSupabase();
+  if (!sb || listingIds.length === 0) return {};
+  const { data } = await sb.from("enquiries").select("listing_id").eq("status", "new").in("listing_id", listingIds);
+  const out: Record<string, number> = {};
+  (data ?? []).forEach((r: { listing_id: string }) => { out[r.listing_id] = (out[r.listing_id] ?? 0) + 1; });
+  return out;
+}
+
+// ---------- Admin (Phase 11) ----------
+export async function checkIsAdmin(): Promise<boolean> {
+  const sb = getSupabase();
+  if (!sb) return false;
+  const { data: u } = await sb.auth.getUser();
+  if (!u.user) return false;
+  const { data } = await sb.rpc("is_admin");
+  return data === true;
+}
+
+export type AdminReport = {
+  id: string; reason: string; details: string | null; status: "open" | "reviewing" | "actioned" | "dismissed"; created_at: string;
+  reporter_id: string; target_user_id: string; trip_id: string | null; message_id: string | null;
+  reporter_name: string | null; target_name: string | null;
+};
+
+export async function adminListReports(status: AdminReport["status"] | "all"): Promise<AdminReport[]> {
+  const { sb } = await requireUser();
+  let q = sb.from("reports").select("*, reporter:profiles!reports_reporter_id_fkey(display_name), target:profiles!reports_target_user_id_fkey(display_name)")
+    .order("created_at", { ascending: false }).limit(100);
+  if (status !== "all") q = q.eq("status", status);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []).map((r: Record<string, unknown>) => ({
+    ...(r as unknown as AdminReport),
+    reporter_name: (r.reporter as { display_name: string | null } | null)?.display_name ?? null,
+    target_name: (r.target as { display_name: string | null } | null)?.display_name ?? null,
+  }));
+}
+
+export async function adminSetReportStatus(id: string, status: AdminReport["status"]): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from("reports").update({ status }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function adminSetListing(id: string, verified: boolean, hidden: boolean): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.rpc("admin_set_listing", { lid: id, set_verified: verified, set_hidden: hidden });
+  if (error) throw error;
+}
+
+export type AdminMetrics = {
+  validation: Record<string, number | null> | null; daily: { day: string; active_people: number; active_members: number }[];
+  open_reports: number; listings: number; unverified_listings: number;
+};
+export async function adminMetrics(): Promise<AdminMetrics> {
+  const { sb } = await requireUser();
+  const { data, error } = await sb.rpc("admin_metrics");
+  if (error) throw error;
+  return data as AdminMetrics;
+}
+
+/** Remove content as an admin (allowed by database rules, only for admins). */
+export async function adminDelete(table: "post_comments" | "reviews" | "places" | "place_reports" | "trip_messages" | "collections", id: string): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from(table).delete().eq("id", id);
   if (error) throw error;
 }

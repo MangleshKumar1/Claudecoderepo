@@ -301,3 +301,48 @@ export type Activity = {
   followers: number;
   following: number;
 };
+
+// ---------- Directory & admin (Phase 11) ----------
+export const LISTING_KINDS = [
+  ["stay", "🛏️", "Stays"], ["guide", "🧑‍🏫", "Local guides"], ["vehicle", "🚗", "Vehicles"],
+  ["activity", "🎟️", "Activities"], ["operator", "🧭", "Tour operators"], ["food", "🍜", "Food"],
+] as const;
+export type ListingKind = (typeof LISTING_KINDS)[number][0];
+export const PRICE_UNITS = ["per night", "per day", "per person", "per trip"] as const;
+export type PriceUnit = (typeof PRICE_UNITS)[number];
+
+export type Listing = {
+  id: string;
+  owner_id: string;
+  kind: ListingKind;
+  name: string;
+  description: string | null;
+  city: string | null;
+  price_from: number | null;
+  price_unit: PriceUnit | null;
+  website: string | null;
+  photo_key: string | null;
+  verified: boolean;
+  hidden_by_admin: boolean;
+  status: "active" | "hidden";
+  created_at: string;
+  owner_name?: string | null;
+  new_enquiries?: number;
+};
+
+export type Enquiry = {
+  id: string;
+  listing_id: string;
+  from_user: string;
+  message: string;
+  contact: string;
+  start_date: string | null;
+  end_date: string | null;
+  people: number | null;
+  status: "new" | "replied" | "closed";
+  owner_reply: string | null;
+  replied_at: string | null;
+  created_at: string;
+  traveller?: string | null;
+  listing_name?: string | null;
+};

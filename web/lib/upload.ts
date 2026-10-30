@@ -3,7 +3,7 @@ import { MAX_UPLOAD_BYTES } from "./media";
 import { getSupabase } from "./supabase";
 
 /** Compresses a photo, uploads it straight to the media bucket, and returns its storage key. */
-export type UploadKind = "places" | "posts" | "avatars";
+export type UploadKind = "places" | "posts" | "avatars" | "listings";
 
 export async function uploadImage(file: File, kind: UploadKind = "places"): Promise<string> {
   const sb = getSupabase();

@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import Logo from "./Logo";
 import { getSupabase } from "@/lib/supabase";
 import { clearOffline } from "@/lib/offline";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 import { useUser } from "@/lib/useUser";
 
 const MAIN = [
@@ -11,6 +12,7 @@ const MAIN = [
   ["/feed", "Feed"],
   ["/trips", "Trips"],
   ["/itineraries", "Itineraries"],
+  ["/directory", "Directory"],
 ] as const;
 const MORE = [
   ["/discover", "🎲 Discover / surprise me"],
@@ -24,6 +26,7 @@ const MORE = [
 
 export default function Header() {
   const { user } = useUser();
+  const isAdmin = useIsAdmin();
   const path = usePathname() || "/";
   const on = (href: string) => (path === href || path.startsWith(href + "/") ? "on" : "");
   return (
@@ -33,7 +36,7 @@ export default function Header() {
         {MAIN.map(([href, label]) => <Link key={href} href={href} className={on(href)}>{label}</Link>)}
         <details className="more">
           <summary>More ▾</summary>
-          <div className="menu">{MORE.map(([href, label]) => <Link key={href} href={href}>{label}</Link>)}</div>
+          <div className="menu">{MORE.map(([href, label]) => <Link key={href} href={href}>{label}</Link>)}{isAdmin && <Link href="/admin">🛡️ Admin</Link>}</div>
         </details>
       </nav>
       <div className="header-actions">

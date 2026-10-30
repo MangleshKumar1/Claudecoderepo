@@ -1,6 +1,6 @@
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { ALLOWED_TYPES, MAX_UPLOAD_BYTES, type AllowedType } from "@/lib/media";
@@ -24,6 +24,12 @@ function r2() {
       credentials: { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY },
     }),
   };
+}
+
+/** Admins (rows in the admins table) may remove other people's content. The check runs in the database. */
+async function isAdmin(sb: SupabaseClient): Promise<boolean> {
+  const { data } = await sb.rpc("is_admin");
+  return data === true;
 }
 
 async function authedClient(req: Request) {
@@ -52,7 +58,7 @@ export async function POST(req: Request) {
   }
   const contentType = body.contentType as AllowedType;
   const size = Number(body.size);
-  const kind = (["places", "posts", "avatars"] as const).find((k) => k === body.kind) ?? "places";
+  const kind = (["places", "posts", "avatars", "listings"] as const).find((k) => k === body.kind) ?? "places";
   if (!(contentType in ALLOWED_TYPES)) {
     return NextResponse.json({ error: "Only JPG, PNG or WebP images are allowed." }, { status: 400 });
   }
@@ -99,7 +105,7 @@ export async function DELETE(req: Request) {
   if (postId) {
     if (!/^[0-9a-f-]{36}$/i.test(postId)) return NextResponse.json({ error: "Bad request." }, { status: 400 });
     const { data: post } = await auth.sb.from("posts").select("id,user_id").eq("id", postId).maybeSingle();
-    if (!post || post.user_id !== auth.uid) return NextResponse.json({ error: "Post not found." }, { status: 404 });
+    if (!post || (post.user_id !== auth.uid && !(await isAdmin(auth.sb)))) return NextResponse.json({ error: "Post not found." }, { status: 404 });
     const { data: photos } = await auth.sb.from("post_photos").select("storage_key").eq("post_id", postId);
     const { error: delErr } = await auth.sb.from("posts").delete().eq("id", postId);
     if (delErr) return NextResponse.json({ error: "Could not delete the post." }, { status: 500 });
@@ -117,7 +123,7 @@ export async function DELETE(req: Request) {
   if (!id || !/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ error: "Bad request." }, { status: 400 });
 
   const { data: row } = await auth.sb.from("place_photos").select("storage_key,user_id").eq("id", id).maybeSingle();
-  if (!row || row.user_id !== auth.uid) return NextResponse.json({ error: "Photo not found." }, { status: 404 });
+  if (!row || (row.user_id !== auth.uid && !(await isAdmin(auth.sb)))) return NextResponse.json({ error: "Photo not found." }, { status: 404 });
 
   const { error } = await auth.sb.from("place_photos").delete().eq("id", id);
   if (error) return NextResponse.json({ error: "Could not delete the photo." }, { status: 500 });
