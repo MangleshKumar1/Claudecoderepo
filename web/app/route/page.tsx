@@ -5,7 +5,8 @@ import PlaceCard from "@/components/PlaceCard";
 import { track } from "@/lib/analytics";
 import { listPlaces } from "@/lib/data";
 import { fuelCost } from "@/lib/fuel";
-import { distanceKm, distanceToSegmentKm, type LatLng } from "@/lib/geo";
+import { distanceKm, distanceToPolylineKm, distanceToSegmentKm, type LatLng } from "@/lib/geo";
+import { fetchRoadRoute, type RoadRoute } from "@/lib/roadRoute";
 import { CATEGORIES, type Category, type Place } from "@/lib/types";
 
 export default function RouteDiscovery() {
@@ -15,6 +16,9 @@ export default function RouteDiscovery() {
   const [category, setCategory] = useState<Category | "all">("all");
   const [places, setPlaces] = useState<Place[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [road, setRoad] = useState<RoadRoute | null>(null);
+  const [roadNote, setRoadNote] = useState<string | null>(null);
+  const [roadBusy, setRoadBusy] = useState(false);
   const [fuel, setFuel] = useState({ kmPerLitre: "15", price: "100", people: "2", roundTrip: true, factor: "1.3" });
 
   useEffect(() => { listPlaces().then(setPlaces).catch((e) => setError(e.message)); }, []);
@@ -25,31 +29,52 @@ export default function RouteDiscovery() {
     else setTo({ lat, lng });
   }
 
+  // When both points are set, try to get the real driving route (needs login and a routing key on the server).
+  useEffect(() => {
+    setRoad(null); setRoadNote(null);
+    if (!from || !to) return;
+    let live = true;
+    setRoadBusy(true);
+    fetchRoadRoute(from, to)
+      .then((r) => { if (live) setRoad(r); })
+      .catch((e: Error & { unavailable?: boolean }) => { if (live) setRoadNote(e.unavailable ? `${e.message} Showing a straight-line estimate.` : e.message); })
+      .finally(() => { if (live) setRoadBusy(false); });
+    return () => { live = false; };
+  }, [from, to]);
+
   const along = useMemo(() => {
     if (!from || !to) return [];
-    return places
-      .filter((p) => category === "all" || p.category === category)
+    const pool = places.filter((p) => category === "all" || p.category === category);
+    if (road) {
+      // follow the real road: distance to the road, ordered by distance travelled along it
+      return pool
+        .map((p) => { const r = distanceToPolylineKm({ lat: p.lat, lng: p.lng }, road.coords); return { p, km: r.km, t: road.km > 0 ? r.alongKm / road.km : 0 }; })
+        .filter((x) => x.km <= radius)
+        .sort((a, b) => a.t - b.t);
+    }
+    return pool
       .map((p) => ({ p, ...distanceToSegmentKm({ lat: p.lat, lng: p.lng }, from, to) }))
       .filter((x) => x.km <= radius)
       .sort((a, b) => a.t - b.t); // in order of travel from start to destination
-  }, [places, from, to, radius, category]);
+  }, [places, from, to, radius, category, road]);
 
   useEffect(() => { if (from && to) track("route_search", { radius_km: radius }); }, [from, to, radius]);
 
   const total = from && to ? Math.round(distanceKm(from.lat, from.lng, to.lat, to.lng)) : null;
-  const fc = total != null ? fuelCost({ straightKm: total, roadFactor: Number(fuel.factor) || 1.3, roundTrip: fuel.roundTrip, kmPerLitre: Number(fuel.kmPerLitre), pricePerLitre: Number(fuel.price), people: Math.max(1, Number(fuel.people) || 1) }) : null;
+  const fc = total != null ? fuelCost({ straightKm: road ? road.km : total, roadFactor: road ? 1 : Number(fuel.factor) || 1.3, roundTrip: fuel.roundTrip, kmPerLitre: Number(fuel.kmPerLitre), pricePerLitre: Number(fuel.price), people: Math.max(1, Number(fuel.people) || 1) }) : null;
 
   return (
     <>
       <h1>Discover along your route</h1>
       <p className="muted">
-        Click the map for your start, then your destination. We list community pins within a corridor of that straight line,
-        in the order you'd pass them. It's a rough guide, not turn-by-turn roads, so check real routes before you drive.
+        Click the map for your start, then your destination. We list community pins within a corridor of the route (the real road when routing is switched on, otherwise a straight line),
+        in the order you'd pass them. It is a guide, not turn-by-turn directions, so check your route before you drive.
       </p>
-      <MapLoader height={380} onPick={pick} places={along.map((x) => x.p)}
+      <MapLoader height={380} onPick={pick} places={along.map((x) => x.p)} line={road?.coords}
         extra={[...(from ? [{ ...from, color: "#16a34a", label: "Start" }] : []), ...(to ? [{ ...to, color: "#dc2626", label: "Destination" }] : [])]} />
       <p className="muted">
-        {!from ? "Click to set your start." : !to ? "Now click your destination." : `Straight-line distance about ${total} km. Click again to start over.`}
+        {!from ? "Click to set your start." : !to ? "Now click your destination." : roadBusy ? "Finding the road route…" : road ? `By road: ${road.km} km, about ${Math.floor(road.minutes / 60)} h ${road.minutes % 60} min. Click again to start over.` : `Straight-line distance about ${total} km. Click again to start over.`}
+        {roadNote && <><br /><small>{roadNote}</small></>}
       </p>
       <div className="row" style={{ maxWidth: 520 }}>
         <label>Corridor width: {radius} km each side
@@ -79,7 +104,7 @@ export default function RouteDiscovery() {
             <label className="check"><input type="checkbox" checked={fuel.roundTrip} onChange={(e) => setFuel({ ...fuel, roundTrip: e.target.checked })} /> Round trip</label>
           </div>
           <p><strong>About ₹{Math.round(fc.cost).toLocaleString("en-IN")}</strong> in fuel ({Math.round(fc.totalKm)} km, {fc.litres.toFixed(1)} litres) · about <strong>₹{Math.round(fc.perPerson).toLocaleString("en-IN")} per person</strong></p>
-          <p className="muted"><small>A rough estimate from the straight-line distance. Tolls, parking and detours are extra. We don't have toll data yet, so check your route in a maps app.</small></p>
+          <p className="muted"><small>{road ? "Based on the road distance." : "A rough estimate from the straight-line distance."} Tolls, parking and detours are extra. We don't have toll data yet, so check your route in a maps app.</small></p>
         </details>
       )}
       {from && to && (
@@ -89,7 +114,7 @@ export default function RouteDiscovery() {
           <div className="grid">
             {along.map((x) => (
               <div key={x.p.id}>
-                <small className="muted">{Math.round(x.t * (total ?? 0))} km from start · {x.km.toFixed(1)} km off the line</small>
+                <small className="muted">{Math.round(x.t * (road ? road.km : total ?? 0))} km from start · {x.km.toFixed(1)} km off the {road ? "road" : "line"}</small>
                 <PlaceCard place={x.p} />
               </div>
             ))}

@@ -6,7 +6,7 @@
 > - Deploying: [DEPLOYMENT.md](DEPLOYMENT.md)
 > - Parcel carrying, integrations and revenue: [INTEGRATIONS_AND_PARCELS.md](INTEGRATIONS_AND_PARCELS.md)
 >
-> **Built so far (in `web/`):** Phase 1 map, pins, reviews, saves. Phase 2 trips, matching, chat. Phase 3 safety. Phase 4 itineraries and AI planner. Phase 5 dimension ratings, condition reports, trip expenses, route discovery, analytics. Phases 8-11: social feed, utilities (weather, fuel, discover, SOS), AI tools, business directory + admin panel. Phase 7 group polls. Phase 6 photo upload to Cloudflare R2 (see [CLOUDFLARE_R2_SETUP.md](CLOUDFLARE_R2_SETUP.md)).
+> **Built so far (in `web/`):** Phase 1 map, pins, reviews, saves. Phase 2 trips, matching, chat. Phase 3 safety. Phase 4 itineraries and AI planner. Phase 5 dimension ratings, condition reports, trip expenses, route discovery, analytics. Phase 12: suspension, notifications, road routing. Phases 8-11: social feed, utilities (weather, fuel, discover, SOS), AI tools, business directory + admin panel. Phase 7 group polls. Phase 6 photo upload to Cloudflare R2 (see [CLOUDFLARE_R2_SETUP.md](CLOUDFLARE_R2_SETUP.md)).
 
 > Costs and competitor details are estimates from general knowledge. Verify current pricing and features before deciding.
 

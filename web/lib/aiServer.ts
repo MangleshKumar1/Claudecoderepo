@@ -5,12 +5,13 @@ import { NextResponse } from "next/server";
 import type { z } from "zod";
 
 export const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5-5";
-export type AiKind = "search" | "summary" | "identify";
+export type AiKind = "search" | "summary" | "identify" | "route";
 
 const LIMITS: Record<AiKind, { env: string; fallback: number }> = {
   search: { env: "AI_SEARCHES_PER_DAY", fallback: 20 },
   summary: { env: "AI_SUMMARIES_PER_DAY", fallback: 20 },
   identify: { env: "AI_IDENTIFY_PER_DAY", fallback: 10 },
+  route: { env: "ROUTES_PER_DAY", fallback: 30 }, // road routing (not AI, but shares the same login + daily-cap gate)
 };
 
 const fail = (error: string, status: number) => NextResponse.json({ error }, { status });
@@ -29,7 +30,7 @@ export type AiGate = {
 export async function guardAi(req: Request, kind: AiKind): Promise<AiGate | NextResponse> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!process.env.ANTHROPIC_API_KEY) return fail("This AI feature isn't set up yet (missing ANTHROPIC_API_KEY).", 503);
+  if (kind !== "route" && !process.env.ANTHROPIC_API_KEY) return fail("This AI feature isn't set up yet (missing ANTHROPIC_API_KEY).", 503);
   if (!url || !anon) return fail("Supabase is not configured.", 503);
   const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   if (!token) return fail("Please log in to use this feature.", 401);

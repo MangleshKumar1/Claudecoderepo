@@ -1,4 +1,4 @@
-# YORVIA Web (Phases 1-11)
+# YORVIA Web (Phases 1-12)
 
 > Setup steps, every setting and troubleshooting are in the **[root README](../README.md)**. This file has developer notes.
 
@@ -84,3 +84,10 @@ Row-level security is on: anyone can read, only the owner can change their own p
 - **Weather** calls Open-Meteo straight from the browser (no key). Alerts are guidance, not official warnings.
 - **Offline**: `public/sw.js` only caches static assets and an offline page. Saved itineraries are stored in the browser's `localStorage` and cleared on logout. Pages and user data are never cached by the service worker.
 - **Tested:** every SQL file applied in order to a local Postgres; row-level-security rules tested as different users for each phase (all earlier suites re-run on the final schema); AI routes against mock Supabase and Claude servers; pure logic (split, geo, fuel, weather, discover) with unit checks; compression and screenshots in headless Chromium. **Not tested** against real Supabase, the live Claude API, real Cloudflare R2, the Open-Meteo service, Google OAuth, or on real phones.
+
+## Phase 12 notes
+
+- **Suspension** is enforced by database triggers on 24 tables that create content, so it can't be bypassed by calling the API directly. Suspended people can still read.
+- **Notifications** are created by database triggers (not by app code), so they can't be forged, and users can only read them and mark them read. People who blocked the actor are skipped. The bell checks once a minute and when you return to the tab.
+- **Road routing** (`app/api/route/route.ts`) proxies OpenRouteService so the key stays on the server. It needs login, has a daily cap, validates the reply, and shortens the line to 400 points. Without `ORS_API_KEY` the app uses the straight line.
+- **Backups**: `scripts/backup-db.sh`, `scripts/restore-db.sh`, `scripts/plain-postgres-auth-shim.sql`. The restore loads tables parents-first, resets ID counters, switches the app's own triggers off while loading, and runs in one transaction. Tested: recovery after data loss, a deliberately failing restore (changes nothing), and a move onto a fresh plain Postgres with accounts.

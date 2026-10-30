@@ -129,7 +129,7 @@ Priority order from the research (my judgement, not measured demand). **Bold = s
 | 8 | **Group polls: vote on destination/dates/hotels** | Solves the first hurdle of group planning | done (AI "best compromise" suggestion is a later idea) |
 | 9 | **AI natural-language search** ("peaceful places within 100 km of Delhi under ₹2,000") | Needs enough community data first | done (quality improves as pins grow) |
 | 10 | **AI review summaries** ("what 200 travellers say") | Needs volume | done (needs 3+ reviews per place) |
-| 11 | Real road routing for route discovery (Mapbox/OpenRouteService + PostGIS) | Accuracy | open: needs a routing provider key |
+| 11 | **Real road routing for route discovery** (OpenRouteService) | Accuracy | done as optional: needs a free `ORS_API_KEY`; straight line otherwise |
 | 12 | **Travel essentials fields** (toilet yes/no, cleanliness, paid, water, parking, wheelchair) | Long-trip pain point | done |
 | 13 | **"Cost reality"**: advertised vs actual (hotel price, parking, extras) | Strong trust feature | done |
 | 14 | **Creator profiles, collections** ("20 best waterfalls in India"), follow | Growth loop | done (profiles, follow, collections; creator earnings later) |

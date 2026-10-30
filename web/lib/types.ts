@@ -346,3 +346,14 @@ export type Enquiry = {
   traveller?: string | null;
   listing_name?: string | null;
 };
+
+// ---------- Notifications & suspension (Phase 12) ----------
+export type AppNotification = {
+  id: string;
+  kind: "enquiry" | "enquiry_reply" | "join_request" | "join_decision" | "comment" | "follow" | "rating" | "report_update";
+  title: string;
+  body: string | null;
+  link: string | null;
+  read_at: string | null;
+  created_at: string;
+};

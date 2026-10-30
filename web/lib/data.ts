@@ -5,7 +5,7 @@ import type { Plan, PlanRequestT } from "./planSchema";
 import { SAMPLE_TRIPS } from "./sampleTrips";
 import { uploadImage } from "./upload";
 import type {
-  Activity, Category, Collection, ConditionKind, Enquiry, Itinerary, ItineraryItem, Place, PlaceReport, PlaceStats, Profile, ProfileStats, ReportReason,
+  Activity, AppNotification, Category, Collection, ConditionKind, Enquiry, Itinerary, ItineraryItem, Place, PlaceReport, PlaceStats, Profile, ProfileStats, ReportReason,
   Listing, ListingKind, PlacePhoto, Poll, PollKind, Post, PostComment, PriceUnit, Review, Trip, TripExpense, TripMember, TripMessage, UserRating,
 } from "./types";
 
@@ -1076,5 +1076,65 @@ export async function adminMetrics(): Promise<AdminMetrics> {
 export async function adminDelete(table: "post_comments" | "reviews" | "places" | "place_reports" | "trip_messages" | "collections", id: string): Promise<void> {
   const { sb } = await requireUser();
   const { error } = await sb.from(table).delete().eq("id", id);
+  if (error) throw error;
+}
+
+// ---------- Notifications & suspension (Phase 12) ----------
+export async function listNotifications(limit = 50): Promise<AppNotification[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data: u } = await sb.auth.getUser();
+  if (!u.user) return [];
+  const { data, error } = await sb.from("notifications").select("*").order("created_at", { ascending: false }).limit(limit);
+  if (error) throw error;
+  return (data ?? []) as AppNotification[];
+}
+
+export async function unreadNotificationCount(): Promise<number> {
+  const sb = getSupabase();
+  if (!sb) return 0;
+  const { data: s } = await sb.auth.getSession();
+  if (!s.session) return 0;
+  const { count } = await sb.from("notifications").select("id", { count: "exact", head: true }).is("read_at", null);
+  return count ?? 0;
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id).is("read_at", null);
+  if (error) throw error;
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from("notifications").update({ read_at: new Date().toISOString() }).is("read_at", null);
+  if (error) throw error;
+}
+
+/** Your own suspension, if any (so the app can explain why you can't post). */
+export async function getMySuspension(): Promise<{ reason: string | null } | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data: u } = await sb.auth.getUser();
+  if (!u.user) return null;
+  const { data } = await sb.from("suspensions").select("reason").eq("user_id", u.user.id).maybeSingle();
+  return data ? { reason: (data as { reason: string | null }).reason } : null;
+}
+
+/** Admin only (the database enforces it). */
+export async function adminIsSuspended(userId: string): Promise<boolean> {
+  const sb = getSupabase();
+  if (!sb) return false;
+  const { data } = await sb.from("suspensions").select("user_id").eq("user_id", userId).maybeSingle();
+  return Boolean(data);
+}
+export async function adminSuspend(userId: string, reason: string): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.rpc("admin_suspend_user", { target: userId, why: reason });
+  if (error) throw error;
+}
+export async function adminUnsuspend(userId: string): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.rpc("admin_unsuspend_user", { target: userId });
   if (error) throw error;
 }

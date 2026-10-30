@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Logo from "./Logo";
+import NotificationBell from "./NotificationBell";
 import { getSupabase } from "@/lib/supabase";
 import { clearOffline } from "@/lib/offline";
 import { useIsAdmin } from "@/lib/useIsAdmin";
@@ -42,6 +43,7 @@ export default function Header() {
       <div className="header-actions">
         {user ? (
           <>
+            <NotificationBell />
             <Link href="/profile/edit" className="chip">Profile</Link>
             <button className="chip" onClick={() => { clearOffline(); getSupabase()?.auth.signOut(); }}>Log out</button>
           </>
