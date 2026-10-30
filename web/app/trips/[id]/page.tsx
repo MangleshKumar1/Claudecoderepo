@@ -10,10 +10,11 @@ import ReportButton from "@/components/ReportButton";
 import { fmtRange } from "@/components/TripCard";
 import TripCard from "@/components/TripCard";
 import {
-  decideMember, deleteTrip, getTrip, leaveTrip, listMembers, listTrips, requestToJoin,
+  decideMember, deleteTrip, getTrip, leaveTrip, listMembers, listTrips, listTripItineraries, requestToJoin,
 } from "@/lib/data";
 import { findMatches } from "@/lib/match";
-import type { Trip, TripMember } from "@/lib/types";
+import ItineraryCard from "@/components/ItineraryCard";
+import type { Itinerary, Trip, TripMember } from "@/lib/types";
 import { useUser } from "@/lib/useUser";
 
 export default function TripPage() {
@@ -23,6 +24,7 @@ export default function TripPage() {
   const [trip, setTrip] = useState<Trip | null | undefined>(undefined);
   const [members, setMembers] = useState<TripMember[]>([]);
   const [others, setOthers] = useState<Trip[]>([]);
+  const [plans, setPlans] = useState<Itinerary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -33,6 +35,7 @@ export default function TripPage() {
       if (t) {
         setMembers(await listMembers(id));
         setOthers(await listTrips());
+        setPlans(await listTripItineraries(id));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
@@ -134,6 +137,15 @@ export default function TripPage() {
           <h2>Group chat</h2>
           <p className="muted">Only the organiser and approved travellers can see this chat. Don't share sensitive details until you trust the group.</p>
           <TripChat tripId={id} userId={user.id} />
+        </>
+      )}
+
+      {canChat && (
+        <>
+          <h2>Itineraries</h2>
+          <p className="muted">Plan the days together. Everyone in this trip group can edit.</p>
+          <div className="grid">{plans.map((p) => <ItineraryCard key={p.id} it={p} />)}</div>
+          <p><Link href={`/itineraries/new?trip=${id}`} className="chip active">✨ Plan this trip</Link></p>
         </>
       )}
 

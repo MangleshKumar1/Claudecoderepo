@@ -118,3 +118,39 @@ export const REPORT_REASONS = [
   ["other", "Other"],
 ] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number][0];
+
+export const TIMES_OF_DAY = ["morning", "afternoon", "evening", "night"] as const;
+export type TimeOfDay = (typeof TIMES_OF_DAY)[number];
+
+export type Itinerary = {
+  id: string;
+  user_id: string;
+  trip_id: string | null;
+  title: string;
+  destination: string;
+  dest_lat: number | null;
+  dest_lng: number | null;
+  summary: string | null;
+  extra_notes: string | null;
+  start_date: string | null;
+  num_days: number;
+  budget_per_person: number | null;
+  is_public: boolean;
+  ai_generated: boolean;
+  created_at: string;
+  owner?: string | null;
+};
+
+export type ItineraryItem = {
+  id: string;
+  itinerary_id: string;
+  day: number;
+  position: number;
+  time_of_day: TimeOfDay;
+  title: string;
+  description: string | null;
+  est_cost: number | null;
+  lat: number | null;
+  lng: number | null;
+  place_id: string | null;
+};

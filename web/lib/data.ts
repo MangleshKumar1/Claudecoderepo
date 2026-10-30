@@ -1,8 +1,9 @@
 import { getSupabase, isConfigured } from "./supabase";
 import { SAMPLE_PLACES, SAMPLE_REVIEWS } from "./sample";
+import type { Plan, PlanRequestT } from "./planSchema";
 import { SAMPLE_TRIPS } from "./sampleTrips";
 import type {
-  Category, Place, Profile, ProfileStats, ReportReason, Review, Trip, TripMember, TripMessage, UserRating,
+  Category, Itinerary, ItineraryItem, Place, Profile, ProfileStats, ReportReason, Review, Trip, TripMember, TripMessage, UserRating,
 } from "./types";
 
 type Stats = { place_id: string; avg_rating: number | null; review_count: number };
@@ -345,4 +346,143 @@ export async function setBlocked(userId: string, blocked: boolean): Promise<void
     ? await sb.from("blocks").insert({ blocker_id: uid, blocked_id: userId })
     : await sb.from("blocks").delete().eq("blocker_id", uid).eq("blocked_id", userId);
   if (error) throw error;
+}
+
+// ---------- Itineraries & AI planner (Phase 4) ----------
+
+type ItineraryRow = Itinerary & { profiles?: { display_name: string | null } | null };
+const toItinerary = ({ profiles, ...i }: ItineraryRow): Itinerary => ({ ...i, owner: profiles?.display_name ?? null });
+
+export async function listMyItineraries(): Promise<Itinerary[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data: u } = await sb.auth.getUser();
+  if (!u.user) return [];
+  const { data, error } = await sb.from("itineraries").select("*").eq("user_id", u.user.id)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Itinerary[];
+}
+
+export async function listPublicItineraries(): Promise<Itinerary[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data, error } = await sb.from("itineraries").select("*, profiles(display_name)").eq("is_public", true)
+    .order("created_at", { ascending: false }).limit(60);
+  if (error) throw error;
+  return ((data ?? []) as ItineraryRow[]).map(toItinerary);
+}
+
+export async function listTripItineraries(tripId: string): Promise<Itinerary[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data, error } = await sb.from("itineraries").select("*").eq("trip_id", tripId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Itinerary[];
+}
+
+export async function getItinerary(id: string): Promise<Itinerary | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data, error } = await sb.from("itineraries").select("*, profiles(display_name)").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data ? toItinerary(data as ItineraryRow) : null;
+}
+
+export async function listItems(itineraryId: string): Promise<ItineraryItem[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data, error } = await sb.from("itinerary_items").select("*").eq("itinerary_id", itineraryId)
+    .order("day").order("position");
+  if (error) throw error;
+  return (data ?? []) as ItineraryItem[];
+}
+
+export type NewItinerary = Pick<Itinerary,
+  "title" | "destination" | "dest_lat" | "dest_lng" | "summary" | "extra_notes" | "start_date" | "num_days" |
+  "budget_per_person" |
+  "trip_id" | "ai_generated">;
+export type NewItem = Omit<ItineraryItem, "id" | "itinerary_id">;
+
+export async function createItinerary(input: NewItinerary, items: NewItem[] = []): Promise<string> {
+  const { sb, uid } = await requireUser();
+  const { data, error } = await sb.from("itineraries").insert({ ...input, user_id: uid }).select("id").single();
+  if (error) throw error;
+  const id = data.id as string;
+  if (items.length) {
+    const { error: e2 } = await sb.from("itinerary_items").insert(items.map((it) => ({ ...it, itinerary_id: id })));
+    if (e2) {
+      await sb.from("itineraries").delete().eq("id", id); // don't leave an empty shell behind
+      throw e2;
+    }
+  }
+  return id;
+}
+
+export async function updateItinerary(id: string, patch: Partial<Pick<Itinerary,
+  "title" | "summary" | "extra_notes" | "is_public" | "budget_per_person" | "num_days" | "start_date" | "trip_id">>): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from("itineraries").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteItinerary(id: string): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from("itineraries").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function addItem(itineraryId: string, item: NewItem): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from("itinerary_items").insert({ ...item, itinerary_id: itineraryId });
+  if (error) throw error;
+}
+
+export async function updateItem(id: string, patch: Partial<Omit<ItineraryItem, "id" | "itinerary_id">>): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from("itinerary_items").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteItem(id: string): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from("itinerary_items").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/** Swap the order of two items in the same day. */
+export async function swapItems(a: ItineraryItem, b: ItineraryItem): Promise<void> {
+  const { sb } = await requireUser();
+  // Positions can tie (e.g. both 0), so assign distinct values rather than exchanging them.
+  const first = Math.min(a.position, b.position);
+  const [x, y] = a.position <= b.position ? [a, b] : [b, a];
+  const r1 = await sb.from("itinerary_items").update({ position: first + 1 }).eq("id", x.id);
+  const r2 = await sb.from("itinerary_items").update({ position: first }).eq("id", y.id);
+  if (r1.error || r2.error) throw r1.error ?? r2.error;
+}
+
+export async function requestAiPlan(input: Omit<PlanRequestT, "style"> & { style: PlanRequestT["style"] }): Promise<Plan> {
+  const sb = getSupabase();
+  if (!sb) throw new Error("Supabase is not configured");
+  const { data } = await sb.auth.getSession();
+  if (!data.session) throw new Error("Please log in first");
+  const res = await fetch("/api/plan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}` },
+    body: JSON.stringify(input),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error ?? "The planner failed. Please try again.");
+  return body.plan as Plan;
+}
+
+/** Turn an AI plan into rows ready for createItinerary. */
+export function planToItems(plan: Plan): NewItem[] {
+  return plan.days.flatMap((d) =>
+    d.items.map((it, i) => ({
+      day: d.day, position: i, time_of_day: it.time_of_day, title: it.title,
+      description: it.description, est_cost: it.est_cost, lat: it.lat, lng: it.lng, place_id: it.place_id,
+    })),
+  );
 }

@@ -11,6 +11,7 @@ export default function Header() {
       <nav>
         <Link href="/explore">Explore</Link>
         <Link href="/trips">Trips</Link>
+        <Link href="/itineraries">Itineraries</Link>
         <Link href="/places/new">Pin a place</Link>
         <Link href="/saved">Saved</Link>
         {user ? (
