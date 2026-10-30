@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import MapLoader from "@/components/MapLoader";
+import { catEmoji, catLabel } from "@/lib/categories";
 import { addPlacePhoto, createPlace } from "@/lib/data";
 import { uploadsEnabled } from "@/lib/media";
 import { uploadImage } from "@/lib/upload";
@@ -69,7 +70,7 @@ export default function NewPlace() {
         <label>Title<input name="title" required minLength={2} maxLength={120} /></label>
         <label>Category
           <select name="category" defaultValue="offbeat">
-            {CATEGORIES.map((c) => <option key={c} value={c}>{c.replace("_", " ")}</option>)}
+            {CATEGORIES.map((c) => <option key={c} value={c}>{catEmoji(c)} {catLabel(c)}</option>)}
           </select>
         </label>
         <label>Description<textarea name="description" /></label>

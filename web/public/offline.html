@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YORVIA – offline</title>
+<style>
+  :root{color-scheme:light dark;--bg:#f5f7fa;--surface:#fff;--text:#0f172a;--muted:#64748b;--border:#e2e8f0;--brand:#0d9488}
+  @media (prefers-color-scheme:dark){:root{--bg:#0a111d;--surface:#121b2c;--text:#e8eef7;--muted:#93a3b8;--border:#233149;--brand:#2dd4bf}}
+  body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.55}
+  main{max-width:720px;margin:0 auto;padding:24px 16px 60px}
+  h1{margin:.2em 0}.muted{color:var(--muted)}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin:12px 0}
+  .day{font-weight:700;margin:14px 0 4px;color:var(--brand)}
+  button{font:inherit;background:var(--brand);color:#fff;border:0;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer}
+  pre{white-space:pre-wrap;font:inherit}
+</style>
+</head>
+<body>
+<main>
+  <h1>You're offline</h1>
+  <p class="muted">No connection right now. Itineraries you saved on this device are below. Everything else needs the internet.</p>
+  <p><button onclick="location.reload()">Try again</button></p>
+  <div id="packs"></div>
+</main>
+<script>
+  (function () {
+    var el = document.getElementById("packs");
+    var packs = [];
+    try { packs = JSON.parse(localStorage.getItem("yorvia_offline_packs") || "[]"); } catch (e) {}
+    function add(parent, tag, text, cls) { var n = document.createElement(tag); n.textContent = text; if (cls) n.className = cls; parent.appendChild(n); return n; }
+    if (!packs.length) { add(el, "p", "No itineraries saved for offline use yet. Open an itinerary while online and tap “Save offline”.", "muted"); return; }
+    packs.forEach(function (p) {
+      var card = document.createElement("div"); card.className = "card"; el.appendChild(card);
+      add(card, "h2", p.title);
+      add(card, "div", p.destination + " · saved " + new Date(p.savedAt).toLocaleDateString(), "muted");
+      var byDay = {};
+      (p.items || []).forEach(function (it) { (byDay[it.day] = byDay[it.day] || []).push(it); });
+      Object.keys(byDay).sort(function (a, b) { return a - b; }).forEach(function (d) {
+        add(card, "div", "Day " + d, "day");
+        byDay[d].sort(function (a, b) { return a.position - b.position; }).forEach(function (it) {
+          var line = it.time_of_day + ": " + it.title + (it.est_cost != null ? " (₹" + it.est_cost + ")" : "");
+          add(card, "div", line);
+          if (it.description) add(card, "div", it.description, "muted");
+          if (it.lat != null && it.lng != null) add(card, "div", "Location: " + it.lat.toFixed(4) + ", " + it.lng.toFixed(4), "muted");
+        });
+      });
+      if (p.extra_notes) { add(card, "div", "Safety & packing", "day"); add(card, "pre", p.extra_notes); }
+    });
+  })();
+</script>
+</body>
+</html>

@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import MapLoader from "@/components/MapLoader";
+import { catEmoji, catLabel } from "@/lib/categories";
 import PhotoGallery from "@/components/PhotoGallery";
 import PhotoUploader from "@/components/PhotoUploader";
 import ShareButton from "@/components/ShareButton";
@@ -105,7 +106,7 @@ export default function PlacePage() {
 
   return (
     <>
-      <span className="tag">{place.category.replace("_", " ")}</span>
+      <span className="tag">{catEmoji(place.category)} {catLabel(place.category)}</span>
       <h1>{place.title}</h1>
       <p className="muted">{avg ? `★ ${avg} from ${reviews.length} review(s)` : "No reviews yet"}</p>
       <p><button className="chip" onClick={onSave}>{saved ? "★ Saved" : "☆ Save"}</button> <ShareButton title={place.title} /></p>

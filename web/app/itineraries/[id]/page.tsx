@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import MapLoader from "@/components/MapLoader";
 import ShareButton from "@/components/ShareButton";
+import { isSavedOffline, removeOffline, saveOffline } from "@/lib/offline";
 import {
   addItem, deleteItem, deleteItinerary, getItinerary, getTrip, listItems, listMembers, swapItems,
   updateItem, updateItinerary,
@@ -25,6 +26,7 @@ export default function ItineraryPage() {
   const [editing, setEditing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [offline, setOffline] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -44,6 +46,7 @@ export default function ItineraryPage() {
     }
   }, [id, user]);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { setOffline(isSavedOffline(id)); }, [id]);
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -113,7 +116,13 @@ export default function ItineraryPage() {
         {it.destination} · by <Link href={`/profile/${it.user_id}`}>{it.owner ?? "a traveller"}</Link>
         {trip && <> · for trip <Link href={`/trips/${trip.id}`}>{trip.title}</Link></>}
       </p>
-      {it.is_public && <p><ShareButton title={it.title} label="Share itinerary" /></p>}
+      <p>
+        {it.is_public && <><ShareButton title={it.title} label="Share itinerary" />{" "}</>}
+        <button className="chip" onClick={() => {
+          if (offline) { removeOffline(id); setOffline(false); } else { saveOffline(it, items); setOffline(true); }
+        }}>{offline ? "✓ Saved offline (remove)" : "⬇ Save offline"}</button>
+        {offline && <small className="muted"> Stored only on this device. It's cleared when you log out.</small>}
+      </p>
       {it.summary && <p>{it.summary}</p>}
       {it.ai_generated && <p className="muted"><small>Generated with AI. Prices and opening hours are estimates, so verify them before you go.</small></p>}
 

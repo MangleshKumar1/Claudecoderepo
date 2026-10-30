@@ -12,12 +12,10 @@ export default function TripCard({ trip, note }: { trip: Trip; note?: string }) 
     <Link href={`/trips/${trip.id}`} className="card">
       <span className="tag">{trip.style}</span>
       <h3>{trip.title}</h3>
-      <p>
-        {trip.origin ? `${trip.origin} → ` : ""}{trip.destination} · {fmtRange(trip)}
-      </p>
-      <small>
+      <p>{trip.origin ? `${trip.origin} → ` : ""}{trip.destination}</p>
+      <p style={{ marginBottom: 6 }}>📅 {fmtRange(trip)}{trip.budget_per_person != null ? ` · ~₹${trip.budget_per_person.toLocaleString("en-IN")}/person` : ""}</p>
+      <small className={spots > 0 ? "ok" : "muted"}>
         {spots > 0 ? `${spots} spot${spots === 1 ? "" : "s"} open` : "Full"}
-        {trip.budget_per_person != null ? ` · ~₹${trip.budget_per_person}/person` : ""}
         {note ? ` · ${note}` : ""}
       </small>
     </Link>
