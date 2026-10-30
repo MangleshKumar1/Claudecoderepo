@@ -23,6 +23,7 @@ export default function NewPlace() {
     if (!pos) return setError("Click the map to drop a pin.");
     const f = new FormData(e.currentTarget);
     const val = (k: string) => ((f.get(k) as string) || "").trim() || null;
+    const tri = (k: string) => (f.get(k) === "true" ? true : f.get(k) === "false" ? false : null);
     setBusy(true);
     setError(null);
     try {
@@ -36,6 +37,16 @@ export default function NewPlace() {
         how_to_reach: val("how_to_reach"),
         tips: val("tips"),
         photo_url: val("photo_url"),
+        entry_fee: f.get("entry_fee") ? Number(f.get("entry_fee")) : null,
+        typical_cost_per_day: f.get("typical_cost_per_day") ? Number(f.get("typical_cost_per_day")) : null,
+        parking_fee: f.get("parking_fee") ? Number(f.get("parking_fee")) : null,
+        parking: (val("parking") as "free" | "paid" | "none" | null),
+        toilet: (val("toilet") as "yes_clean" | "yes_poor" | "no" | null),
+        mobile_network: (val("mobile_network") as "none" | "weak" | "good" | null),
+        drinking_water: tri("drinking_water"),
+        fuel_nearby: tri("fuel_nearby"),
+        atm_nearby: tri("atm_nearby"),
+        wheelchair_access: tri("wheelchair_access"),
       });
       const photo = f.get("photo") as File | null;
       if (uploadsEnabled && photo && photo.size > 0) {
@@ -81,6 +92,30 @@ export default function NewPlace() {
           : <label>Photo URL (optional)<input name="photo_url" type="url" /></label>}
         </div>
         <label>How to reach<textarea name="how_to_reach" /></label>
+        <details className="tips"><summary>Useful details for visitors (optional)</summary>
+          <div className="stack" style={{ marginTop: 10 }}>
+            <div className="row">
+              <label>Entry fee (₹, 0 if free)<input name="entry_fee" type="number" min={0} /></label>
+              <label>Typical cost per day (₹)<input name="typical_cost_per_day" type="number" min={0} /></label>
+            </div>
+            <div className="row">
+              <label>Parking<select name="parking" defaultValue=""><option value="">Don't know</option><option value="free">Free</option><option value="paid">Paid</option><option value="none">None</option></select></label>
+              <label>Parking fee (₹)<input name="parking_fee" type="number" min={0} /></label>
+            </div>
+            <div className="row">
+              <label>Toilet<select name="toilet" defaultValue=""><option value="">Don't know</option><option value="yes_clean">Yes, clean</option><option value="yes_poor">Yes, poor condition</option><option value="no">None</option></select></label>
+              <label>Mobile network<select name="mobile_network" defaultValue=""><option value="">Don't know</option><option value="good">Good</option><option value="weak">Weak</option><option value="none">None</option></select></label>
+            </div>
+            <div className="row">
+              <label>Drinking water<select name="drinking_water" defaultValue=""><option value="">Don't know</option><option value="true">Available</option><option value="false">Not available</option></select></label>
+              <label>Fuel nearby<select name="fuel_nearby" defaultValue=""><option value="">Don't know</option><option value="true">Yes</option><option value="false">No</option></select></label>
+            </div>
+            <div className="row">
+              <label>ATM nearby<select name="atm_nearby" defaultValue=""><option value="">Don't know</option><option value="true">Yes</option><option value="false">No</option></select></label>
+              <label>Wheelchair accessible<select name="wheelchair_access" defaultValue=""><option value="">Don't know</option><option value="true">Yes</option><option value="false">No</option></select></label>
+            </div>
+          </div>
+        </details>
         <label>Tips<textarea name="tips" /></label>
         <button className="primary" disabled={busy}>{busy ? "Saving…" : "Publish pin"}</button>
         {error && <p className="error">{error}{createdId && <> <Link href={`/places/${createdId}`}>Open your pin</Link> to add the photo there.</>}</p>}

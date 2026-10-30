@@ -1,6 +1,7 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
+import AiSearch from "@/components/AiSearch";
 import EmptyState from "@/components/EmptyState";
 import MapLoader from "@/components/MapLoader";
 import PlaceCard from "@/components/PlaceCard";
@@ -36,6 +37,7 @@ function Explore() {
       <form className="searchbar" onSubmit={(e) => { e.preventDefault(); router.replace(`/explore${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`); }}>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name, place or tip…" aria-label="Search places" />
       </form>
+      <AiSearch />
       <div className="filters" role="group" aria-label="Filter by type">
         <button className={`chip ${category === "all" ? "active" : ""}`} onClick={() => setCategory("all")}>All</button>
         {CATEGORIES.map((c) => (

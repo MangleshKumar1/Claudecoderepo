@@ -3,7 +3,9 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import MapLoader from "@/components/MapLoader";
+import PlanLogistics from "@/components/PlanLogistics";
 import ShareButton from "@/components/ShareButton";
+import WeatherCard from "@/components/WeatherCard";
 import { isSavedOffline, removeOffline, saveOffline } from "@/lib/offline";
 import {
   addItem, deleteItem, deleteItinerary, getItinerary, getTrip, listItems, listMembers, swapItems,
@@ -135,6 +137,7 @@ export default function ItineraryPage() {
         )}
       </p>
 
+      {it.dest_lat != null && it.dest_lng != null && <WeatherCard lat={it.dest_lat} lng={it.dest_lng} label={it.destination} />}
       {pins.length > 0 && <MapLoader height={300} places={pins} center={center} zoom={pins.length > 1 ? 6 : 10} />}
 
       {byDay.map((dayItems, d) => {
@@ -174,6 +177,8 @@ export default function ItineraryPage() {
       {isOwner && (
         <p><button className="chip" disabled={busy} onClick={() => run(() => updateItinerary(id, { num_days: Math.min(30, byDay.length + 1) }))}>+ Add a day</button></p>
       )}
+
+      <PlanLogistics destination={it.destination} lat={it.dest_lat} lng={it.dest_lng} checkin={it.start_date} />
 
       {it.extra_notes && (
         <>

@@ -13,10 +13,13 @@ const MAIN = [
   ["/itineraries", "Itineraries"],
 ] as const;
 const MORE = [
+  ["/discover", "🎲 Discover / surprise me"],
+  ["/identify", "📸 What place is this?"],
   ["/collections", "🗂️ Collections"],
   ["/route", "🛣️ Along a route"],
   ["/places/new", "📍 Pin a place"],
   ["/saved", "★ Saved"],
+  ["/sos", "🆘 Emergency"],
 ] as const;
 
 export default function Header() {

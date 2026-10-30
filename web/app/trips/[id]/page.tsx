@@ -7,7 +7,9 @@ import SafetyTips from "@/components/SafetyTips";
 import TripChat from "@/components/TripChat";
 import TripRatings from "@/components/TripRatings";
 import ReportButton from "@/components/ReportButton";
+import PlanLogistics from "@/components/PlanLogistics";
 import ShareButton from "@/components/ShareButton";
+import WeatherCard from "@/components/WeatherCard";
 import TripExpenses from "@/components/TripExpenses";
 import TripPolls from "@/components/TripPolls";
 import { fmtRange } from "@/components/TripCard";
@@ -89,6 +91,8 @@ export default function TripPage() {
           photo_url: null, created_at: trip.created_at }]} />
 
       <p><ShareButton title={trip.title} label="Share this trip" /></p>
+      <WeatherCard lat={trip.dest_lat} lng={trip.dest_lng} label={trip.destination} />
+      <PlanLogistics destination={trip.destination} origin={trip.origin} lat={trip.dest_lat} lng={trip.dest_lng} checkin={trip.start_date} checkout={trip.end_date} />
       <SafetyTips />
       {!isOwner && <p><ReportButton targetUserId={trip.user_id} tripId={id} label="Report this trip's organiser" /></p>}
 

@@ -34,7 +34,7 @@ export const SAMPLE_REVIEWS: Review[] = [
     pros: "Stunning views, well-marked trail", cons: "Cold nights, limited network",
     price_paid: 450, price_note: "Cab Manali to Jobra (shared)", currency: "INR",
     value_rating: 5, safety_rating: 4, visited_on: "2026-07-14",
-    beauty_rating: 5, accessibility_rating: 3, cleanliness_rating: 4, crowd_rating: 2,
+    beauty_rating: 5, accessibility_rating: 3, cleanliness_rating: 4, crowd_rating: 2, advertised_price: null, actual_price: null,
     created_at: "2026-07-20T00:00:00Z", author: "demo",
   },
 ];

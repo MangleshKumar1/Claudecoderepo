@@ -4,12 +4,14 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import MapLoader from "@/components/MapLoader";
 import { catEmoji, catLabel } from "@/lib/categories";
+import ReviewSummary from "@/components/ReviewSummary";
 import AddToCollection from "@/components/AddToCollection";
+import WeatherCard from "@/components/WeatherCard";
 import PhotoGallery from "@/components/PhotoGallery";
 import PhotoUploader from "@/components/PhotoUploader";
 import ShareButton from "@/components/ShareButton";
 import {
-  createReview, getPlace, getPlaceStats, listPlacePhotos, listPlaceReports, listReviews, listSavedIds, reportCondition,
+  createReview, getCostReality, getPlace, getPlaceStats, listPlacePhotos, listPlaceReports, listReviews, listSavedIds, reportCondition,
   toggleSave,
 } from "@/lib/data";
 import { CONDITION_KINDS, type ConditionKind, type Place, type PlacePhoto, type PlaceReport, type PlaceStats, type Review } from "@/lib/types";
@@ -23,6 +25,7 @@ export default function PlacePage() {
   const [saved, setSaved] = useState(false);
   const [stats, setStats] = useState<PlaceStats | null>(null);
   const [photos, setPhotos] = useState<PlacePhoto[]>([]);
+  const [cost, setCost] = useState<Awaited<ReturnType<typeof getCostReality>>>(null);
   const [conditions, setConditions] = useState<PlaceReport[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -33,6 +36,7 @@ export default function PlacePage() {
       setReviews(await listReviews(id));
       setStats(await getPlaceStats(id));
       setPhotos(await listPlacePhotos(id));
+      setCost(await getCostReality(id));
       setConditions(await listPlaceReports(id));
       setSaved((await listSavedIds()).includes(id));
     } catch (e) {
@@ -73,6 +77,8 @@ export default function PlacePage() {
         accessibility_rating: num("accessibility_rating"),
         cleanliness_rating: num("cleanliness_rating"),
         crowd_rating: num("crowd_rating"),
+        advertised_price: num("advertised_price"),
+        actual_price: num("actual_price"),
         visited_on: text("visited_on"),
       });
       e.currentTarget.reset();
@@ -121,6 +127,38 @@ export default function PlacePage() {
       {place.how_to_reach && <p><strong>How to reach:</strong> {place.how_to_reach}</p>}
       {place.tips && <p><strong>Tips:</strong> {place.tips}</p>}
 
+      {(place.toilet || place.parking || place.mobile_network || place.entry_fee != null || place.parking_fee != null || place.typical_cost_per_day != null ||
+        place.drinking_water != null || place.fuel_nearby != null || place.atm_nearby != null || place.wheelchair_access != null) && (
+        <>
+          <h2>Good to know</h2>
+          <div className="badgeGrid">
+            {place.entry_fee != null && <span className="bdg">🎟️ Entry {place.entry_fee === 0 ? "free" : `₹${place.entry_fee}`}</span>}
+            {place.parking && <span className="bdg">🅿️ Parking {place.parking}{place.parking === "paid" && place.parking_fee != null ? ` ₹${place.parking_fee}` : ""}</span>}
+            {place.typical_cost_per_day != null && <span className="bdg">💰 ~₹{place.typical_cost_per_day}/day</span>}
+            {place.toilet && <span className="bdg">🚻 Toilet: {{ yes_clean: "yes, clean", yes_poor: "yes, poor condition", no: "none" }[place.toilet]}</span>}
+            {place.drinking_water != null && <span className="bdg">🚰 Drinking water {place.drinking_water ? "available" : "not available"}</span>}
+            {place.fuel_nearby != null && <span className="bdg">⛽ Fuel {place.fuel_nearby ? "nearby" : "not nearby"}</span>}
+            {place.atm_nearby != null && <span className="bdg">🏧 ATM {place.atm_nearby ? "nearby" : "not nearby"}</span>}
+            {place.wheelchair_access != null && <span className="bdg">♿ {place.wheelchair_access ? "Wheelchair accessible" : "Not wheelchair accessible"}</span>}
+            {place.mobile_network && <span className="bdg">📶 Network: {place.mobile_network}</span>}
+          </div>
+          <p className="muted"><small>Shared by the person who pinned this place. Check recent reviews and conditions below.</small></p>
+        </>
+      )}
+
+      {cost && cost.reports > 0 && (
+        <>
+          <h2>Cost reality</h2>
+          <p>
+            Advertised about <strong>₹{cost.avg_advertised}</strong>, travellers actually paid about <strong className={cost.avg_actual > cost.avg_advertised ? "error" : "ok"}>₹{cost.avg_actual}</strong>
+            {cost.avg_advertised > 0 && cost.avg_actual !== cost.avg_advertised && <> ({cost.avg_actual > cost.avg_advertised ? "+" : ""}{Math.round(((cost.avg_actual - cost.avg_advertised) / cost.avg_advertised) * 100)}%)</>}
+            <small className="muted"> · from {cost.reports} traveller{cost.reports === 1 ? "" : "s"}</small>
+          </p>
+        </>
+      )}
+
+      <WeatherCard lat={place.lat} lng={place.lng} label={place.title} />
+
       {stats && stats.review_count > 0 && (
         <>
           <h2>What travellers say</h2>
@@ -166,6 +204,7 @@ export default function PlacePage() {
       )}
 
       <h2>Reviews</h2>
+      <ReviewSummary placeId={id} reviewCount={reviews.length} />
       {reviews.map((r) => (
         <div key={r.id} className="review">
           <strong>★ {r.rating}</strong> <span className="muted">by {r.author ?? "traveller"}{r.visited_on ? ` · visited ${r.visited_on}` : ""}</span>
@@ -202,6 +241,10 @@ export default function PlacePage() {
           <div className="row">
             <label>Value for money (1-5)<input name="value_rating" type="number" min={1} max={5} /></label>
             <label>Safety (1-5)<input name="safety_rating" type="number" min={1} max={5} /></label>
+          </div>
+          <div className="row">
+            <label>Advertised price (₹, optional)<input name="advertised_price" type="number" min={0} /></label>
+            <label>Actually paid in total (₹, optional)<input name="actual_price" type="number" min={0} /></label>
           </div>
           <div className="row">
             <label>Natural beauty (1-5)<input name="beauty_rating" type="number" min={1} max={5} /></label>

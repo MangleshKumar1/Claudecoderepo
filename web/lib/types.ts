@@ -20,6 +20,16 @@ export type Place = {
   avg_rating?: number | null;
   review_count?: number;
   cover_key?: string | null; // storage key of the first uploaded photo
+  toilet?: "yes_clean" | "yes_poor" | "no" | null;
+  drinking_water?: boolean | null;
+  parking?: "free" | "paid" | "none" | null;
+  fuel_nearby?: boolean | null;
+  atm_nearby?: boolean | null;
+  wheelchair_access?: boolean | null;
+  mobile_network?: "none" | "weak" | "good" | null;
+  entry_fee?: number | null;
+  parking_fee?: number | null;
+  typical_cost_per_day?: number | null;
 };
 
 export type Review = {
@@ -39,6 +49,8 @@ export type Review = {
   accessibility_rating: number | null;
   cleanliness_rating: number | null;
   crowd_rating: number | null;
+  advertised_price: number | null;
+  actual_price: number | null;
   created_at: string;
   author?: string | null;
 };

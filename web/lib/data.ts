@@ -885,3 +885,38 @@ export async function removeFromCollection(collectionId: string, placeId: string
   const { error } = await sb.from("collection_places").delete().eq("collection_id", collectionId).eq("place_id", placeId);
   if (error) throw error;
 }
+
+// ---------- Utilities (Phase 9) ----------
+export type CostReality = { place_id: string; reports: number; avg_advertised: number; avg_actual: number };
+
+export async function getCostReality(placeId: string): Promise<CostReality | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data, error } = await sb.from("place_cost_reality").select("*").eq("place_id", placeId).maybeSingle();
+  if (error) throw error;
+  return (data as CostReality | null) ?? null;
+}
+
+export type EmergencyContact = { id: string; name: string; phone: string; relation: string | null };
+
+export async function listContacts(): Promise<EmergencyContact[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data: u } = await sb.auth.getUser();
+  if (!u.user) return [];
+  const { data, error } = await sb.from("emergency_contacts").select("id,name,phone,relation").order("created_at");
+  if (error) throw error;
+  return (data ?? []) as EmergencyContact[];
+}
+
+export async function addContact(c: { name: string; phone: string; relation: string | null }): Promise<void> {
+  const { sb, uid } = await requireUser();
+  const { error } = await sb.from("emergency_contacts").insert({ ...c, user_id: uid, phone: c.phone.replace(/[\s()-]/g, "") });
+  if (error) throw new Error(error.code === "23514" ? "Enter the phone number with country code, e.g. +919876543210" : error.message);
+}
+
+export async function deleteContact(id: string): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from("emergency_contacts").delete().eq("id", id);
+  if (error) throw error;
+}
