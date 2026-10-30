@@ -10,7 +10,7 @@ export const maxDuration = 120;
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5-5";
 const DAILY_LIMIT = Number(process.env.AI_PLANS_PER_DAY || 10);
 
-const SYSTEM = `You are the trip-planning engine inside TripMates, a travel community app used mostly by travellers in India.
+const SYSTEM = `You are the trip-planning engine inside YORVIA, a travel community app used mostly by travellers in India.
 
 Build a realistic, day-by-day itinerary from the traveller's request.
 

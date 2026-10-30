@@ -1,4 +1,4 @@
--- TripMates Phase 4: itineraries (manual + AI-generated) and AI usage log.
+-- YORVIA Phase 4: itineraries (manual + AI-generated) and AI usage log.
 -- Run AFTER schema.sql, phase2_trips.sql and phase3_safety.sql. Run once.
 
 create table if not exists public.itineraries (

@@ -1,4 +1,4 @@
--- TripMates / YORVIA Phase 6: place photos stored in Cloudflare R2.
+-- YORVIA Phase 6: place photos stored in Cloudflare R2.
 -- Run AFTER schema.sql and phases 2-5. Run once.
 -- The database stores only each photo's storage key; the file lives in the R2 bucket.
 

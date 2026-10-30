@@ -1,4 +1,4 @@
-# TripMates – Product Plan
+# YORVIA – Product Plan
 
 > **Where things stand (see these docs first):**
 > - Strategy, research, competitors, validation targets and the full backlog: [PRODUCT_STRATEGY.md](PRODUCT_STRATEGY.md)
@@ -6,7 +6,7 @@
 > - Deploying: [DEPLOYMENT.md](DEPLOYMENT.md)
 > - Parcel carrying, integrations and revenue: [INTEGRATIONS_AND_PARCELS.md](INTEGRATIONS_AND_PARCELS.md)
 >
-> **Built so far (in `web/`):** Phase 1 map, pins, reviews, saves. Phase 2 trips, matching, chat. Phase 3 safety. Phase 4 itineraries and AI planner. Phase 5 dimension ratings, condition reports, trip expenses, route discovery, analytics. Phase 6 photo upload to Cloudflare R2 (see [CLOUDFLARE_R2_SETUP.md](CLOUDFLARE_R2_SETUP.md)).
+> **Built so far (in `web/`):** Phase 1 map, pins, reviews, saves. Phase 2 trips, matching, chat. Phase 3 safety. Phase 4 itineraries and AI planner. Phase 5 dimension ratings, condition reports, trip expenses, route discovery, analytics. Phase 7 group polls. Phase 6 photo upload to Cloudflare R2 (see [CLOUDFLARE_R2_SETUP.md](CLOUDFLARE_R2_SETUP.md)).
 
 > Costs and competitor details are estimates from general knowledge. Verify current pricing and features before deciding.
 

@@ -1,4 +1,6 @@
-# TripMates Web (Phases 1-6)
+# YORVIA Web (Phases 1-7)
+
+> Setup steps, every setting and troubleshooting are in the **[root README](../README.md)**. This file has developer notes.
 
 Next.js (App Router, TypeScript) + Supabase + MapLibre.
 
@@ -14,6 +16,8 @@ Next.js (App Router, TypeScript) + Supabase + MapLibre.
 
 **Phase 6 features:** photo upload to a Cloudflare R2 bucket (browser-side compression, location data stripped, signed short-lived upload links, per-user caps, report/delete), place galleries, and cover photos on cards. Setup: [../docs/CLOUDFLARE_R2_SETUP.md](../docs/CLOUDFLARE_R2_SETUP.md). All Cloudflare resources are named `yorvia-…`.
 
+**Phase 7 features:** group polls inside trips. Anyone on the trip can start a poll (destination, dates, stay, activity...), suggest options, and vote once (changeable until closed). The poll's creator or the trip organiser can close, reopen or delete it. Polls and votes are visible only to the trip group.
+
 ## Run locally
 
 ```bash
@@ -27,7 +31,7 @@ Open http://localhost:3000. Without Supabase keys the app runs in **demo mode** 
 ## Enable accounts, pins and reviews
 
 1. Create a free project at https://supabase.com
-2. In the SQL editor, run `supabase/schema.sql`, then `supabase/phase2_trips.sql`, then `supabase/phase3_safety.sql`, then `supabase/phase4_itineraries.sql`, then `supabase/phase5_community.sql`, then `supabase/phase6_photos.sql` (run each file once; already have Phase 1 set up? Just run `phase2_trips.sql`, `phase3_safety.sql`, `phase4_itineraries.sql`, `phase5_community.sql` and `phase6_photos.sql`; phase 2 also fixes the review author link)
+2. In the SQL editor, run `supabase/schema.sql`, then `supabase/phase2_trips.sql`, then `supabase/phase3_safety.sql`, then `supabase/phase4_itineraries.sql`, then `supabase/phase5_community.sql`, then `supabase/phase6_photos.sql`, then `supabase/phase7_polls.sql` (run each file once; already have Phase 1 set up? Just run `phase2_trips.sql`, `phase3_safety.sql`, `phase4_itineraries.sql`, `phase5_community.sql`, `phase6_photos.sql` and `phase7_polls.sql`; phase 2 also fixes the review author link)
 3. Copy `.env.example` to `.env.local` and fill in the project URL and anon key (Project Settings -> API)
 4. In Authentication -> Providers, keep Email enabled (disable "Confirm email" while testing if you like)
 5. For the AI planner, add `ANTHROPIC_API_KEY` to `.env.local` (see below)

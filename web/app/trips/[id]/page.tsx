@@ -9,6 +9,7 @@ import TripRatings from "@/components/TripRatings";
 import ReportButton from "@/components/ReportButton";
 import ShareButton from "@/components/ShareButton";
 import TripExpenses from "@/components/TripExpenses";
+import TripPolls from "@/components/TripPolls";
 import { fmtRange } from "@/components/TripCard";
 import TripCard from "@/components/TripCard";
 import {
@@ -151,6 +152,8 @@ export default function TripPage() {
           <p><Link href={`/itineraries/new?trip=${id}`} className="chip active">✨ Plan this trip</Link></p>
         </>
       )}
+
+      {canChat && user && <TripPolls tripId={id} me={user.id} isOwner={isOwner} />}
 
       {canChat && user && (
         <TripExpenses tripId={id} me={user.id} isOwner={isOwner}

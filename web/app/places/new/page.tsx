@@ -69,7 +69,7 @@ export default function NewPlace() {
         <label>Title<input name="title" required minLength={2} maxLength={120} /></label>
         <label>Category
           <select name="category" defaultValue="offbeat">
-            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            {CATEGORIES.map((c) => <option key={c} value={c}>{c.replace("_", " ")}</option>)}
           </select>
         </label>
         <label>Description<textarea name="description" /></label>

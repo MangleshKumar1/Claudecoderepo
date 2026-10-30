@@ -64,3 +64,5 @@ pre.notes{white-space:pre-wrap;font:inherit;background:var(--card);border:1px so
 .gallery figure{margin:0}
 .gallery img{width:100%;height:150px;object-fit:cover;border-radius:10px;display:block}
 .gallery figcaption{padding:4px 2px}
+.pollRow{margin:8px 0;display:grid;gap:4px}
+.pollChoice{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font-weight:500}

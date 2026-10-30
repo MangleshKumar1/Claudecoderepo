@@ -105,7 +105,7 @@ export default function PlacePage() {
 
   return (
     <>
-      <span className="tag">{place.category}</span>
+      <span className="tag">{place.category.replace("_", " ")}</span>
       <h1>{place.title}</h1>
       <p className="muted">{avg ? `★ ${avg} from ${reviews.length} review(s)` : "No reviews yet"}</p>
       <p><button className="chip" onClick={onSave}>{saved ? "★ Saved" : "☆ Save"}</button> <ShareButton title={place.title} /></p>

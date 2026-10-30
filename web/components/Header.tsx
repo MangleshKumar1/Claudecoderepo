@@ -7,7 +7,7 @@ export default function Header() {
   const { user } = useUser();
   return (
     <header className="header">
-      <Link href="/" className="brand">TripMates</Link>
+      <Link href="/" className="brand">YORVIA</Link>
       <nav>
         <Link href="/explore">Explore</Link>
         <Link href="/route">Along a route</Link>

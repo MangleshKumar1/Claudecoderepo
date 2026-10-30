@@ -5,7 +5,7 @@ import PageViewTracker from "@/components/PageViewTracker";
 import SetupBanner from "@/components/SetupBanner";
 
 export const metadata: Metadata = {
-  title: "TripMates – pin places, share trips, travel together",
+  title: "YORVIA – pin places, share trips, travel together",
   description: "Discover hidden places, read honest reviews with real prices, and share your travels.",
 };
 

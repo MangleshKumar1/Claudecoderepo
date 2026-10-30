@@ -1,4 +1,4 @@
--- TripMates Phase 3: profiles, verification, buddy ratings, reports, blocks.
+-- YORVIA Phase 3: profiles, verification, buddy ratings, reports, blocks.
 -- Run AFTER schema.sql and phase2_trips.sql.
 
 -- ---------- Profiles ----------

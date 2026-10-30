@@ -219,3 +219,23 @@ export type PlacePhoto = {
   created_at: string;
   uploader?: string | null;
 };
+
+export const POLL_KINDS = [
+  ["destination", "Destination"], ["dates", "Dates"], ["stay", "Where to stay"],
+  ["activity", "Activity"], ["transport", "Transport"], ["other", "Something else"],
+] as const;
+export type PollKind = (typeof POLL_KINDS)[number][0];
+
+export type PollOption = { id: string; poll_id: string; label: string; added_by: string };
+export type PollVote = { poll_id: string; option_id: string; user_id: string; voter?: string | null };
+export type Poll = {
+  id: string;
+  trip_id: string;
+  created_by: string;
+  question: string;
+  kind: PollKind;
+  status: "open" | "closed";
+  created_at: string;
+  options: PollOption[];
+  votes: PollVote[];
+};

@@ -5,7 +5,7 @@ import type { Plan, PlanRequestT } from "./planSchema";
 import { SAMPLE_TRIPS } from "./sampleTrips";
 import type {
   Category, ConditionKind, Itinerary, ItineraryItem, Place, PlaceReport, PlaceStats, Profile, ProfileStats, ReportReason,
-  PlacePhoto, Review, Trip, TripExpense, TripMember, TripMessage, UserRating,
+  PlacePhoto, Poll, PollKind, Review, Trip, TripExpense, TripMember, TripMessage, UserRating,
 } from "./types";
 
 type Stats = { place_id: string; avg_rating: number | null; review_count: number };
@@ -588,4 +588,76 @@ export async function deletePlacePhoto(id: string): Promise<void> {
     headers: { Authorization: `Bearer ${data.session.access_token}` },
   });
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Could not delete the photo.");
+}
+
+// ---------- Group polls (Phase 7) ----------
+export async function listPolls(tripId: string): Promise<Poll[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data: polls, error } = await sb.from("polls").select("*").eq("trip_id", tripId).order("created_at", { ascending: false });
+  if (error) throw error;
+  if (!polls?.length) return [];
+  const ids = polls.map((p: { id: string }) => p.id);
+  const [{ data: options, error: e2 }, { data: votes, error: e3 }] = await Promise.all([
+    sb.from("poll_options").select("*").in("poll_id", ids).order("created_at"),
+    sb.from("poll_votes").select("*, profiles(display_name)").in("poll_id", ids),
+  ]);
+  if (e2) throw e2;
+  if (e3) throw e3;
+  return polls.map((p: Record<string, unknown>) => ({
+    ...(p as unknown as Poll),
+    options: (options ?? []).filter((o: { poll_id: string }) => o.poll_id === p.id),
+    votes: (votes ?? []).filter((v: { poll_id: string }) => v.poll_id === p.id).map((v: Record<string, unknown>) => ({
+      ...(v as unknown as { poll_id: string; option_id: string; user_id: string }),
+      voter: (v.profiles as { display_name: string | null } | null)?.display_name ?? null,
+    })),
+  }));
+}
+
+export async function createPoll(tripId: string, question: string, kind: PollKind, labels: string[]): Promise<void> {
+  const { sb, uid } = await requireUser();
+  const { data, error } = await sb.from("polls").insert({ trip_id: tripId, created_by: uid, question, kind }).select("id").single();
+  if (error) throw error;
+  const pollId = data.id as string;
+  if (labels.length) {
+    const { error: e2 } = await sb.from("poll_options").insert(labels.map((label) => ({ poll_id: pollId, label, added_by: uid })));
+    if (e2) {
+      await sb.from("polls").delete().eq("id", pollId); // don't leave an empty poll behind
+      throw e2;
+    }
+  }
+  track("poll_created", { kind });
+}
+
+export async function addPollOption(pollId: string, label: string): Promise<void> {
+  const { sb, uid } = await requireUser();
+  const { error } = await sb.from("poll_options").insert({ poll_id: pollId, label, added_by: uid });
+  if (error) throw error;
+}
+
+/** Cast or change your vote (one vote per person per poll). */
+export async function castVote(pollId: string, optionId: string): Promise<void> {
+  const { sb, uid } = await requireUser();
+  const { error } = await sb.from("poll_votes").upsert(
+    { poll_id: pollId, option_id: optionId, user_id: uid }, { onConflict: "poll_id,user_id" });
+  if (error) throw error;
+  track("poll_voted");
+}
+
+export async function withdrawVote(pollId: string): Promise<void> {
+  const { sb, uid } = await requireUser();
+  const { error } = await sb.from("poll_votes").delete().eq("poll_id", pollId).eq("user_id", uid);
+  if (error) throw error;
+}
+
+export async function setPollStatus(pollId: string, status: "open" | "closed"): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from("polls").update({ status }).eq("id", pollId);
+  if (error) throw error;
+}
+
+export async function deletePoll(pollId: string): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from("polls").delete().eq("id", pollId);
+  if (error) throw error;
 }

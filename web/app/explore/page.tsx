@@ -20,7 +20,7 @@ export default function Explore() {
       <div className="filters">
         {(["all", ...CATEGORIES] as const).map((c) => (
           <button key={c} className={`chip ${category === c ? "active" : ""}`} onClick={() => setCategory(c)}>
-            {c}
+            {c.replace("_", " ")}
           </button>
         ))}
       </div>

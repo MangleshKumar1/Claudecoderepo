@@ -1,4 +1,4 @@
--- TripMates Phase 1 schema. Run in Supabase SQL editor.
+-- YORVIA Phase 1 schema. Run in Supabase SQL editor.
 
 create extension if not exists "pgcrypto";
 
