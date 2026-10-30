@@ -10,6 +10,7 @@ export default function Header() {
       <Link href="/" className="brand">TripMates</Link>
       <nav>
         <Link href="/explore">Explore</Link>
+        <Link href="/route">Along a route</Link>
         <Link href="/trips">Trips</Link>
         <Link href="/itineraries">Itineraries</Link>
         <Link href="/places/new">Pin a place</Link>

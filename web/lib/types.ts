@@ -1,5 +1,6 @@
 export const CATEGORIES = [
   "beach", "mountain", "trek", "food", "city", "culture", "nature", "stay", "offbeat",
+  "waterfall", "viewpoint", "rest_stop",
 ] as const;
 export type Category = (typeof CATEGORIES)[number];
 
@@ -33,6 +34,10 @@ export type Review = {
   value_rating: number | null;
   safety_rating: number | null;
   visited_on: string | null;
+  beauty_rating: number | null;
+  accessibility_rating: number | null;
+  cleanliness_rating: number | null;
+  crowd_rating: number | null;
   created_at: string;
   author?: string | null;
 };
@@ -153,4 +158,53 @@ export type ItineraryItem = {
   lat: number | null;
   lng: number | null;
   place_id: string | null;
+};
+
+export type PlaceStats = {
+  place_id: string;
+  review_count: number;
+  avg_rating: number | null;
+  avg_beauty: number | null;
+  avg_accessibility: number | null;
+  avg_cleanliness: number | null;
+  avg_safety: number | null;
+  avg_value: number | null;
+  avg_crowd: number | null;
+  last_visited: string | null;
+};
+
+export const CONDITION_KINDS = [
+  ["all_good", "All good, nothing to report"],
+  ["road_damaged", "Road is damaged"],
+  ["fee_changed", "Entry or parking fee changed"],
+  ["dry_or_closed", "Dry / closed right now"],
+  ["parking_unavailable", "Parking unavailable"],
+  ["overcrowded", "Overcrowded"],
+  ["unsafe", "Feels unsafe"],
+  ["permanently_closed", "Permanently closed"],
+] as const;
+export type ConditionKind = (typeof CONDITION_KINDS)[number][0];
+
+export type PlaceReport = {
+  id: string;
+  place_id: string;
+  user_id: string;
+  kind: ConditionKind;
+  note: string | null;
+  created_at: string;
+  author?: string | null;
+};
+
+export const EXPENSE_CATEGORIES = ["stay", "transport", "fuel", "food", "activities", "tickets", "other"] as const;
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
+
+export type TripExpense = {
+  id: string;
+  trip_id: string;
+  paid_by: string;
+  amount: number;
+  description: string;
+  category: ExpenseCategory;
+  created_at: string;
+  payer?: string | null;
 };

@@ -12,6 +12,7 @@ Everything the app needs is in `web/`. This is a one-time setup of about 20 minu
    2. `phase2_trips.sql`
    3. `phase3_safety.sql`
    4. `phase4_itineraries.sql`
+   5. `phase5_community.sql`
 3. **Project Settings -> API**: copy the **Project URL** and the **anon public** key. (Never use the `service_role` key in this app.)
 4. **Authentication -> Providers**: keep Email enabled. For phone verification, enable Phone and connect an SMS provider (Twilio, MessageBird, Vonage...). SMS costs money.
 5. After you know your site URL (step 4), set **Authentication -> URL Configuration**: Site URL = your Vercel URL, and add the same URL (plus `http://localhost:3000`) to Redirect URLs. Without this, the confirmation emails link to the wrong place.
@@ -59,6 +60,10 @@ Everything the app needs is in `web/`. This is a one-time setup of about 20 minu
 - **Moderation**: reports land in the Supabase table `reports` (`status = open`). Check it regularly, since there is no admin screen yet.
 - **Legal pages**: privacy policy and terms (you collect emails, optional phone verification and user content). In India, review the DPDP Act obligations.
 - **Spend alerts**: Anthropic spend limit, Vercel usage alerts, Supabase usage page.
+
+## 5b. Reading your numbers (analytics)
+
+In Supabase, open the **SQL editor** and run `select * from metrics_validation;` (the validation targets in `docs/PRODUCT_STRATEGY.md`) and `select * from metrics_daily_active;`. Nobody can read these through the app. Mention analytics in your privacy policy.
 
 ## 6. Day-to-day
 

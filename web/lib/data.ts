@@ -1,9 +1,11 @@
+import { track } from "./analytics";
 import { getSupabase, isConfigured } from "./supabase";
 import { SAMPLE_PLACES, SAMPLE_REVIEWS } from "./sample";
 import type { Plan, PlanRequestT } from "./planSchema";
 import { SAMPLE_TRIPS } from "./sampleTrips";
 import type {
-  Category, Itinerary, ItineraryItem, Place, Profile, ProfileStats, ReportReason, Review, Trip, TripMember, TripMessage, UserRating,
+  Category, ConditionKind, Itinerary, ItineraryItem, Place, PlaceReport, PlaceStats, Profile, ProfileStats, ReportReason,
+  Review, Trip, TripExpense, TripMember, TripMessage, UserRating,
 } from "./types";
 
 type Stats = { place_id: string; avg_rating: number | null; review_count: number };
@@ -64,6 +66,7 @@ export async function createPlace(input: NewPlace): Promise<string> {
     .select("id")
     .single();
   if (error) throw error;
+  track("place_created", { category: input.category });
   return data.id as string;
 }
 
@@ -79,6 +82,7 @@ export async function createReview(input: NewReview): Promise<void> {
     { onConflict: "place_id,user_id" },
   );
   if (error) throw error;
+  track("review_created");
 }
 
 export async function toggleSave(placeId: string, saved: boolean): Promise<void> {
@@ -92,6 +96,7 @@ export async function toggleSave(placeId: string, saved: boolean): Promise<void>
   } else {
     const { error } = await sb.from("saves").insert({ place_id: placeId, user_id: u.user.id });
     if (error) throw error;
+    track("place_saved");
   }
 }
 
@@ -159,6 +164,7 @@ export async function createTrip(input: NewTrip): Promise<string> {
   const { sb, uid } = await requireUser();
   const { data, error } = await sb.from("trips").insert({ ...input, user_id: uid }).select("id").single();
   if (error) throw error;
+  track("trip_created", { style: input.style });
   return data.id as string;
 }
 
@@ -195,6 +201,7 @@ export async function requestToJoin(tripId: string, message: string | null): Pro
   const { sb, uid } = await requireUser();
   const { error } = await sb.from("trip_members").insert({ trip_id: tripId, user_id: uid, message });
   if (error) throw error;
+  track("join_requested");
 }
 
 export async function decideMember(tripId: string, userId: string, status: "approved" | "rejected"): Promise<void> {
@@ -324,6 +331,7 @@ export async function reportUser(input: {
     trip_id: input.trip_id ?? null, message_id: input.message_id ?? null,
   });
   if (error) throw error;
+  track("report_filed", { reason: input.reason });
 }
 
 export async function listBlocked(): Promise<{ id: string; name: string | null }[]> {
@@ -417,6 +425,7 @@ export async function createItinerary(input: NewItinerary, items: NewItem[] = []
       throw e2;
     }
   }
+  track("itinerary_created", { ai: input.ai_generated });
   return id;
 }
 
@@ -474,6 +483,7 @@ export async function requestAiPlan(input: Omit<PlanRequestT, "style"> & { style
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error ?? "The planner failed. Please try again.");
+  track("ai_plan_generated", { days: input.days });
   return body.plan as Plan;
 }
 
@@ -485,4 +495,60 @@ export function planToItems(plan: Plan): NewItem[] {
       description: it.description, est_cost: it.est_cost, lat: it.lat, lng: it.lng, place_id: it.place_id,
     })),
   );
+}
+
+// ---------- Place dimensions, conditions, expenses (Phase 5) ----------
+export async function getPlaceStats(placeId: string): Promise<PlaceStats | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data, error } = await sb.from("place_dimension_stats").select("*").eq("place_id", placeId).maybeSingle();
+  if (error) throw error;
+  return (data as PlaceStats | null) ?? null;
+}
+
+/** Condition reports from the last 90 days, newest first. */
+export async function listPlaceReports(placeId: string): Promise<PlaceReport[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const since = new Date(Date.now() - 90 * 86_400_000).toISOString();
+  const { data, error } = await sb.from("place_reports").select("*, profiles(display_name)")
+    .eq("place_id", placeId).gte("created_at", since).order("created_at", { ascending: false }).limit(20);
+  if (error) throw error;
+  return (data ?? []).map((r: Record<string, unknown>) => ({
+    ...(r as unknown as PlaceReport),
+    author: (r.profiles as { display_name: string | null } | null)?.display_name ?? null,
+  }));
+}
+
+export async function reportCondition(placeId: string, kind: ConditionKind, note: string | null): Promise<void> {
+  const { sb, uid } = await requireUser();
+  const { error } = await sb.from("place_reports").insert({ place_id: placeId, user_id: uid, kind, note });
+  if (error) throw error;
+  track("condition_reported", { kind });
+}
+
+export async function listExpenses(tripId: string): Promise<TripExpense[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data, error } = await sb.from("trip_expenses").select("*, profiles(display_name)")
+    .eq("trip_id", tripId).order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((r: Record<string, unknown>) => ({
+    ...(r as unknown as TripExpense),
+    amount: Number((r as { amount: unknown }).amount),
+    payer: (r.profiles as { display_name: string | null } | null)?.display_name ?? null,
+  }));
+}
+
+export async function addExpense(input: Pick<TripExpense, "trip_id" | "amount" | "description" | "category">): Promise<void> {
+  const { sb, uid } = await requireUser();
+  const { error } = await sb.from("trip_expenses").insert({ ...input, paid_by: uid });
+  if (error) throw error;
+  track("expense_added", { category: input.category });
+}
+
+export async function deleteExpense(id: string): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from("trip_expenses").delete().eq("id", id);
+  if (error) throw error;
 }

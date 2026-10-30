@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Header from "@/components/Header";
+import PageViewTracker from "@/components/PageViewTracker";
 import SetupBanner from "@/components/SetupBanner";
 
 export const metadata: Metadata = {
@@ -14,6 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
+        <PageViewTracker />
         <SetupBanner />
         <Header />
         <main className="container">{children}</main>

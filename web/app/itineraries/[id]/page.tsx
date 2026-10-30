@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import MapLoader from "@/components/MapLoader";
+import ShareButton from "@/components/ShareButton";
 import {
   addItem, deleteItem, deleteItinerary, getItinerary, getTrip, listItems, listMembers, swapItems,
   updateItem, updateItinerary,
@@ -112,6 +113,7 @@ export default function ItineraryPage() {
         {it.destination} · by <Link href={`/profile/${it.user_id}`}>{it.owner ?? "a traveller"}</Link>
         {trip && <> · for trip <Link href={`/trips/${trip.id}`}>{trip.title}</Link></>}
       </p>
+      {it.is_public && <p><ShareButton title={it.title} label="Share itinerary" /></p>}
       {it.summary && <p>{it.summary}</p>}
       {it.ai_generated && <p className="muted"><small>Generated with AI. Prices and opening hours are estimates, so verify them before you go.</small></p>}
 

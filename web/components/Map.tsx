@@ -10,6 +10,8 @@ type Props = {
   /** When set, clicking the map moves a draggable marker and reports coordinates. */
   onPick?: (lat: number, lng: number) => void;
   picked?: { lat: number; lng: number } | null;
+  /** Extra labelled markers, e.g. the start and end of a route. */
+  extra?: { lat: number; lng: number; color: string; label: string }[];
   center?: [number, number]; // [lng, lat]
   zoom?: number;
 };
@@ -18,11 +20,12 @@ type Props = {
 // style from MapTiler, Stadia Maps, etc. (e.g. https://api.maptiler.com/maps/streets-v2/style.json?key=YOUR_KEY).
 const STYLE = process.env.NEXT_PUBLIC_MAP_STYLE_URL || "https://demotiles.maplibre.org/style.json";
 
-export default function Map({ places = [], height = 480, onPick, picked, center, zoom }: Props) {
+export default function Map({ places = [], height = 480, onPick, picked, extra = [], center, zoom }: Props) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markers = useRef<maplibregl.Marker[]>([]);
   const pickMarker = useRef<maplibregl.Marker | null>(null);
+  const extraMarkers = useRef<maplibregl.Marker[]>([]);
   const onPickRef = useRef(onPick);
   onPickRef.current = onPick;
 
@@ -65,6 +68,19 @@ export default function Map({ places = [], height = 480, onPick, picked, center,
       pickMarker.current = new maplibregl.Marker({ color: "#ef4444" }).setLngLat([picked.lng, picked.lat]).addTo(m);
     }
   }, [picked]);
+
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return;
+    extraMarkers.current.forEach((x) => x.remove());
+    extraMarkers.current = extra.map((p) =>
+      new maplibregl.Marker({ color: p.color })
+        .setLngLat([p.lng, p.lat])
+        .setPopup(new maplibregl.Popup({ offset: 20 }).setText(p.label))
+        .addTo(m),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(extra)]);
 
   return <div ref={el} style={{ height, width: "100%", borderRadius: 12, overflow: "hidden" }} />;
 }

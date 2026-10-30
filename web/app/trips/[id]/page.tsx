@@ -7,6 +7,8 @@ import SafetyTips from "@/components/SafetyTips";
 import TripChat from "@/components/TripChat";
 import TripRatings from "@/components/TripRatings";
 import ReportButton from "@/components/ReportButton";
+import ShareButton from "@/components/ShareButton";
+import TripExpenses from "@/components/TripExpenses";
 import { fmtRange } from "@/components/TripCard";
 import TripCard from "@/components/TripCard";
 import {
@@ -85,6 +87,7 @@ export default function TripPage() {
           lat: trip.dest_lat, lng: trip.dest_lng, best_season: null, how_to_reach: null, tips: null,
           photo_url: null, created_at: trip.created_at }]} />
 
+      <p><ShareButton title={trip.title} label="Share this trip" /></p>
       <SafetyTips />
       {!isOwner && <p><ReportButton targetUserId={trip.user_id} tripId={id} label="Report this trip's organiser" /></p>}
 
@@ -147,6 +150,11 @@ export default function TripPage() {
           <div className="grid">{plans.map((p) => <ItineraryCard key={p.id} it={p} />)}</div>
           <p><Link href={`/itineraries/new?trip=${id}`} className="chip active">✨ Plan this trip</Link></p>
         </>
+      )}
+
+      {canChat && user && (
+        <TripExpenses tripId={id} me={user.id} isOwner={isOwner}
+          people={[{ id: trip.user_id, name: trip.owner ?? null }, ...approved.map((m) => ({ id: m.user_id, name: m.name ?? null }))]} />
       )}
 
       {ended && canChat && user && (

@@ -1,4 +1,4 @@
-# TripMates Web (Phases 1-4)
+# TripMates Web (Phases 1-5)
 
 Next.js (App Router, TypeScript) + Supabase + MapLibre.
 
@@ -9,6 +9,8 @@ Next.js (App Router, TypeScript) + Supabase + MapLibre.
 **Phase 3 (safety) features:** public traveller profiles (home city, languages, bio, username), phone and email verification badges, buddy ratings after a trip ends, report and block, safety tips, and a private reports table for moderation.
 
 **Phase 4 features:** itinerary builder (days, timed activities, per-person costs, map markers, reorder/edit/delete) and an AI trip planner. Itineraries can be private, public, or linked to a trip so everyone in the travel group can edit them together.
+
+**Phase 5 features:** richer place pages (natural beauty, accessibility, cleanliness, safety, value and crowd ratings, "last visited" date, current-conditions reports), trip expense splitting, "discover along a route", share buttons, new place types (waterfall, viewpoint, rest stop), and first-party analytics for your validation metrics.
 
 ## Run locally
 
@@ -23,7 +25,7 @@ Open http://localhost:3000. Without Supabase keys the app runs in **demo mode** 
 ## Enable accounts, pins and reviews
 
 1. Create a free project at https://supabase.com
-2. In the SQL editor, run `supabase/schema.sql`, then `supabase/phase2_trips.sql`, then `supabase/phase3_safety.sql`, then `supabase/phase4_itineraries.sql` (run each file once; already have Phase 1 set up? Just run `phase2_trips.sql`, `phase3_safety.sql` and `phase4_itineraries.sql`; phase 2 also fixes the review author link)
+2. In the SQL editor, run `supabase/schema.sql`, then `supabase/phase2_trips.sql`, then `supabase/phase3_safety.sql`, then `supabase/phase4_itineraries.sql`, then `supabase/phase5_community.sql` (run each file once; already have Phase 1 set up? Just run `phase2_trips.sql`, `phase3_safety.sql`, `phase4_itineraries.sql` and `phase5_community.sql`; phase 2 also fixes the review author link)
 3. Copy `.env.example` to `.env.local` and fill in the project URL and anon key (Project Settings -> API)
 4. In Authentication -> Providers, keep Email enabled (disable "Confirm email" while testing if you like)
 5. For the AI planner, add `ANTHROPIC_API_KEY` to `.env.local` (see below)
@@ -58,3 +60,10 @@ Row-level security is on: anyone can read, only the owner can change their own p
 - AI output is a starting point: costs and opening hours are estimates, and the UI says so.
 - Tested with mock Supabase/Anthropic servers (auth, validation, daily cap, refusal, rate-limit, clamping, request shape) and a local Postgres run of the row-level-security rules. Not yet tested against the live Anthropic API or a real Supabase project.
 - Collaboration rules: the owner controls title, visibility, linking and deletion. Approved members of the linked trip can add, edit, reorder and delete activities. Removing someone from the trip removes their access. Public itineraries are view-only for everyone else.
+
+## Phase 5 notes
+
+- **Analytics** (`lib/analytics.ts`, `events` table): the browser logs named events (page views, pins, reviews, saves, trips, join requests, itineraries, AI plans, expenses, shares). Events are write-only for clients. Read your numbers in the Supabase SQL editor: `select * from metrics_validation;` and `select * from metrics_daily_active;`. Respects Do Not Track / Global Privacy Control. Anyone can insert events, so a determined person could add junk; the allowed event names and a size limit keep it bounded, and the numbers are for guidance, not billing.
+- **Expense splitting** is equal-split only and tracks who owes whom. It does not move money. Money paid by someone who has left the trip is ignored.
+- **Along a route** (`/route`) uses a straight line between two points, not road routes, and lists community pins inside a corridor in the order you'd pass them.
+- **Tested:** the split and corridor maths (including uneven paise and clamping), and a local Postgres run of all five SQL files covering category rules, rating bounds, condition-report and expense access, the write-only analytics rules, locked metrics views and the metrics calculations. Not tested in a real browser or against a real Supabase project.
