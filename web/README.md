@@ -1,4 +1,4 @@
-# YORVIA Web (Phases 1-7)
+# YORVIA Web (Phases 1-11)
 
 > Setup steps, every setting and troubleshooting are in the **[root README](../README.md)**. This file has developer notes.
 
@@ -17,6 +17,8 @@ Next.js (App Router, TypeScript) + Supabase + MapLibre.
 **Phase 6 features:** photo upload to a Cloudflare R2 bucket (browser-side compression, location data stripped, signed short-lived upload links, per-user caps, report/delete), place galleries, and cover photos on cards. Setup: [../docs/CLOUDFLARE_R2_SETUP.md](../docs/CLOUDFLARE_R2_SETUP.md). All Cloudflare resources are named `yorvia-…`.
 
 **Phase 7 features:** group polls inside trips. Anyone on the trip can start a poll (destination, dates, stay, activity...), suggest options, and vote once (changeable until closed). The poll's creator or the trip organiser can close, reopen or delete it. Polls and votes are visible only to the trip group.
+
+**Phases 8-11:** social feed, follows, collections, badges (computed from activity, so they can't be edited); weather (Open-Meteo, no key), fuel estimate, Discover, SOS and private emergency contacts; AI search, review summaries and photo recognition; business directory with enquiries, admin panel, optional Google login. Details, setup and the full list of settings are in the **[root README](../README.md)**.
 
 ## Run locally
 
@@ -73,3 +75,12 @@ Row-level security is on: anyone can read, only the owner can change their own p
 - **Expense splitting** is equal-split only and tracks who owes whom. It does not move money. Money paid by someone who has left the trip is ignored.
 - **Along a route** (`/route`) uses a straight line between two points, not road routes, and lists community pins inside a corridor in the order you'd pass them.
 - **Tested:** the split and corridor maths (including uneven paise and clamping), and a local Postgres run of all five SQL files covering category rules, rating bounds, condition-report and expense access, the write-only analytics rules, locked metrics views and the metrics calculations. Not tested in a real browser or against a real Supabase project.
+
+## Phases 8-11 notes
+
+- **AI routes** (`app/api/ai/*`, `lib/aiServer.ts`): login required; input is validated first; the daily cap is only used right before the AI call (rejected requests don't use it); prompts treat user text as untrusted data; the photo route never identifies people and strips guesses when the AI says it isn't a place; all output is validated and sanitised before it reaches the browser.
+- **Admin** is decided by the `admins` table in the database (no way to edit it from the app). Admin-only actions are enforced by row-level-security policies and `security definer` functions, not by hiding buttons.
+- **Directory enquiries** are visible only to the traveller and the business owner. Not even admins can read them.
+- **Weather** calls Open-Meteo straight from the browser (no key). Alerts are guidance, not official warnings.
+- **Offline**: `public/sw.js` only caches static assets and an offline page. Saved itineraries are stored in the browser's `localStorage` and cleared on logout. Pages and user data are never cached by the service worker.
+- **Tested:** every SQL file applied in order to a local Postgres; row-level-security rules tested as different users for each phase (all earlier suites re-run on the final schema); AI routes against mock Supabase and Claude servers; pure logic (split, geo, fuel, weather, discover) with unit checks; compression and screenshots in headless Chromium. **Not tested** against real Supabase, the live Claude API, real Cloudflare R2, the Open-Meteo service, Google OAuth, or on real phones.

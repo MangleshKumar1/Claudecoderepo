@@ -127,23 +127,23 @@ Priority order from the research (my judgement, not measured demand). **Bold = s
 | 6 | **AI planner** (itinerary from request + community pins) | Differentiator when fed community data | done |
 | 7 | **Photo upload (Cloudflare R2)** | Content is what draws people | done for place photos; video, avatars and itinerary/review photos are next |
 | 8 | **Group polls: vote on destination/dates/hotels** | Solves the first hurdle of group planning | done (AI "best compromise" suggestion is a later idea) |
-| 9 | AI natural-language search ("peaceful places within 100 km of Delhi under ₹2,000") | Needs enough community data first | medium |
-| 10 | AI review summaries ("what 200 travellers say") | Needs volume | small |
-| 11 | Real road routing for route discovery (Mapbox/OpenRouteService + PostGIS) | Accuracy | medium |
-| 12 | Travel essentials fields (toilet yes/no, cleanliness, paid, water, parking, wheelchair) | Long-trip pain point | small |
-| 13 | "Cost reality": advertised vs actual (hotel price, parking, extras) | Strong trust feature | small |
-| 14 | Creator profiles, collections ("20 best waterfalls in India"), follow | Growth loop | medium |
-| 15 | Contribution reputation and badges, travel passport | Motivates contributing | small-medium |
-| 16 | Trip journal / memories map / trip replay | Retention | medium |
-| 17 | Budget-based destination finder ("what can I visit for ₹5,000?"), Surprise trip, Weekend explorer | Needs cost data from users first | medium |
-| 18 | Fuel calculator (easy), toll calculator (needs data source) | Road-trip utility | small / medium |
-| 19 | Weather alerts, crowd indicators (only with credible data) | Don't present guesses as fact | medium |
-| 20 | Google/phone login, emergency contacts, SOS and live trip share | Safety and convenience | medium |
-| 21 | PWA / offline mode (maps, itinerary, contacts) | Poor-network areas | medium |
-| 22 | Photo place recognition, camera tourist guide | Cool, but late | large |
-| 23 | Vendor panel, local guide panel, admin panel | Needed before bookings | large |
-| 24 | Bookings via affiliates/APIs: buses, hotels, activities, insurance | Revenue | large, after community exists |
-| 25 | Local experience marketplace | Revenue | large |
+| 9 | **AI natural-language search** ("peaceful places within 100 km of Delhi under ₹2,000") | Needs enough community data first | done (quality improves as pins grow) |
+| 10 | **AI review summaries** ("what 200 travellers say") | Needs volume | done (needs 3+ reviews per place) |
+| 11 | Real road routing for route discovery (Mapbox/OpenRouteService + PostGIS) | Accuracy | open: needs a routing provider key |
+| 12 | **Travel essentials fields** (toilet yes/no, cleanliness, paid, water, parking, wheelchair) | Long-trip pain point | done |
+| 13 | **"Cost reality"**: advertised vs actual (hotel price, parking, extras) | Strong trust feature | done |
+| 14 | **Creator profiles, collections** ("20 best waterfalls in India"), follow | Growth loop | done (profiles, follow, collections; creator earnings later) |
+| 15 | **Contribution reputation and badges**, travel passport | Motivates contributing | done (computed badges, points, passport) |
+| 16 | Trip journal / memories map / trip replay | Retention | open (the feed and travel passport cover part of this) |
+| 17 | **Budget-based destination finder** ("what can I visit for ₹5,000?"), Surprise trip, Weekend explorer | Needs cost data from users first | done (budget search only covers places with a shared daily cost) |
+| 18 | **Fuel calculator** (done), toll calculator (not built: needs a data source) | Road-trip utility | fuel done, toll open |
+| 19 | **Weather alerts** (done, Open-Meteo), crowd indicators (not built: no credible data) | Don't present guesses as fact | weather done, crowd open |
+| 20 | **Google login** (optional, needs Supabase + Google setup), phone verification (needs SMS provider), **emergency contacts + SOS page** (done); live trip share not built | Safety and convenience | mostly done |
+| 21 | **PWA / offline mode** (maps, itinerary, contacts) | Poor-network areas | done: installable app, offline page, save itineraries offline (offline maps not built) |
+| 22 | **Photo place recognition**, camera tourist guide | Cool, but late | done (guesses only, never identifies people) |
+| 23 | **Vendor panel, local guide panel, admin panel** | Needed before bookings | done: directory with enquiries + admin panel (no payouts yet) |
+| 24 | Bookings via affiliates/APIs: buses, hotels, activities, insurance | Revenue | open: outbound links only so far; needs partner approval |
+| 25 | Local experience marketplace | Revenue | enquiry-only version done via the directory; no bookings/payments |
 | 26 | TripCarry parcel pilot | See `docs/INTEGRATIONS_AND_PARCELS.md`; needs legal advice first | large |
 
 Items not to build early: your own flight/train/hotel inventory, another generic hotel-booking site.

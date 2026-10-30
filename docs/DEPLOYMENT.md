@@ -15,6 +15,10 @@ Everything the app needs is in `web/`. This is a one-time setup of about 20 minu
    5. `phase5_community.sql`
    6. `phase6_photos.sql`
    7. `phase7_polls.sql`
+   8. `phase8_social.sql`
+   9. `phase9_utilities.sql`
+   10. `phase10_ai_tools.sql`
+   11. `phase11_directory_admin.sql`
 3. **Project Settings -> API**: copy the **Project URL** and the **anon public** key. (Never use the `service_role` key in this app.)
 4. **Authentication -> Providers**: keep Email enabled. For phone verification, enable Phone and connect an SMS provider (Twilio, MessageBird, Vonage...). SMS costs money.
 5. After you know your site URL (step 4), set **Authentication -> URL Configuration**: Site URL = your Vercel URL, and add the same URL (plus `http://localhost:3000`) to Redirect URLs. Without this, the confirmation emails link to the wrong place.

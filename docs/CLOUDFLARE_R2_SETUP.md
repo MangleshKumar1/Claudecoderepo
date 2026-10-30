@@ -102,9 +102,13 @@ Run `web/supabase/phase6_photos.sql` in the Supabase SQL editor, once.
   ```sql
   select u.storage_key, u.created_at
   from media_uploads u
-  left join place_photos p on p.storage_key = u.storage_key
-  where p.id is null and u.created_at < now() - interval '1 day';
+  where u.created_at < now() - interval '1 day'
+    and not exists (select 1 from place_photos x where x.storage_key = u.storage_key)
+    and not exists (select 1 from post_photos  x where x.storage_key = u.storage_key)
+    and not exists (select 1 from profiles     x where x.avatar_key  = u.storage_key)
+    and not exists (select 1 from listings     x where x.photo_key   = u.storage_key);
   ```
+  (Photos live in four folders: `places/`, `posts/`, `avatars/` and `listings/`. Replacing an avatar or listing photo also leaves the old file behind.)
   Delete those files from `yorvia-media` in the R2 dashboard. They cost very little, so this can wait.
 - **Rotating the key:** create a new token (e.g. `yorvia-r2-media-2`), update Vercel, redeploy, then delete the old token.
 - **Spend alerts:** set a billing notification in Cloudflare so surprises are visible early.

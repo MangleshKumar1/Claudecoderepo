@@ -1,6 +1,6 @@
 # YORVIA
 
-A travel community platform. Pin beautiful places on a map, read honest reviews with real prices and current conditions, find people going to the same place, plan trips together (chat, polls, expenses, itineraries), and get an AI-planned itinerary. Booking comes later.
+A travel community platform. Pin beautiful places on a map, post photos and stories, read honest reviews with real prices and current conditions, find people going to the same place, plan trips together (chat, polls, expenses, itineraries), get AI help (trip planner, plain-language search, review summaries, photo recognition), and find local guides and businesses. Online booking and payments are **not** built yet.
 
 **Live app code:** `web/` (Next.js + Supabase + Cloudflare R2 + Claude API) · **Hosting:** Vercel
 
@@ -41,7 +41,7 @@ Keep every key and secret in a password manager. **Never paste secrets into GitH
 ### Step 1: Supabase (database and login)
 
 - [ ] Create a project at https://supabase.com. Choose a region near your users (for India, Mumbai if offered). Save the database password.
-- [ ] Open **SQL Editor -> New query**. Run these 7 files from `web/supabase/` **in this order, once each** (open the file on GitHub, copy all, paste, Run):
+- [ ] Open **SQL Editor -> New query**. Run these 11 files from `web/supabase/` **in this order, once each** (open the file on GitHub, copy all, paste, Run):
 
   | # | File | What it adds |
   |---|---|---|
@@ -52,6 +52,10 @@ Keep every key and secret in a password manager. **Never paste secrets into GitH
   | 5 | `phase5_community.sql` | Dimension ratings, condition reports, expenses, analytics |
   | 6 | `phase6_photos.sql` | Photo records |
   | 7 | `phase7_polls.sql` | Group polls |
+  | 8 | `phase8_social.sql` | Posts, likes, comments, follows, avatars, collections, badges |
+  | 9 | `phase9_utilities.sql` | Place essentials, cost reality, private emergency contacts |
+  | 10 | `phase10_ai_tools.sql` | Usage log for the AI search, summary and photo tools |
+  | 11 | `phase11_directory_admin.sql` | Business directory, enquiries, admin powers |
 
   Running a file twice gives "already exists" errors. That's harmless, but don't do it on purpose.
 - [ ] **Project Settings -> API**: copy two values for later:
@@ -64,6 +68,8 @@ Keep every key and secret in a password manager. **Never paste secrets into GitH
   - Redirect URLs: add the same address, plus `http://localhost:3000`
 - [ ] While testing only: **Authentication -> Providers -> Email -> turn off "Confirm email"** so sign-ups work instantly. Turn it back on before real users.
 - [ ] Optional, for phone badges: **Authentication -> Providers -> Phone**, then connect an SMS provider.
+- [ ] Optional, for "Continue with Google": in Google Cloud Console create an OAuth client (type: Web application). Add the **callback URL shown in Supabase -> Authentication -> Providers -> Google** as an authorised redirect URI. Paste the Google client ID and secret into that Supabase Google page and enable it. Then set `NEXT_PUBLIC_GOOGLE_LOGIN=true` in Vercel and redeploy. (Don't set it before Supabase's Google provider is working, or the button will fail.)
+- [ ] Make yourself an admin (see [section 4](#4-logging-in-your-first-user-and-admin)) once you have created your own account.
 
 ### Step 2: Anthropic (AI planner)
 
@@ -123,6 +129,9 @@ Where to set them: **Vercel -> Project -> Settings -> Environment Variables**, a
 | `R2_BUCKET` | Required for photos | The bucket you created | No | `yorvia-media` |
 | `NEXT_PUBLIC_MEDIA_BASE_URL` | Required for photos | Your bucket's public address | No | `https://media.your-domain.com`, no trailing slash |
 | `UPLOADS_PER_DAY` | Optional | You choose | No | default `30` per user per day |
+| `AI_SEARCHES_PER_DAY` / `AI_SUMMARIES_PER_DAY` / `AI_IDENTIFY_PER_DAY` | Optional | You choose | No | Per-user daily caps for AI search, review summaries and photo recognition. Defaults `20` / `20` / `10` |
+| `NEXT_PUBLIC_GOOGLE_LOGIN` | Optional | You set it to `true` after enabling Google in Supabase | No | Shows the "Continue with Google" button |
+| `NEXT_PUBLIC_BOOKING_AID` | Optional | Your Booking.com affiliate id, if you join their programme | No | Added to "Find stays" links. When set, the page says you may earn a commission |
 | `NEXT_PUBLIC_MAP_STYLE_URL` | Recommended | MapTiler / Stadia | The key inside it is visible in the browser; restrict it by domain in their dashboard | `https://api.maptiler.com/maps/streets-v2/style.json?key=…` |
 
 Not Vercel settings, but also configured by you:
@@ -149,10 +158,21 @@ Not Vercel settings, but also configured by you:
 
 **Your "user id"** is an automatic long ID (a UUID like `3f2b…`). Find it in Supabase -> Authentication -> Users. You never type it anywhere.
 
-**Admin:** the app has no admin screen or admin accounts yet. Being the admin means having access to the **Supabase dashboard**:
-- Reports from users: Table Editor -> `reports` (filter `status = open`)
-- Your growth numbers: SQL Editor -> `select * from metrics_validation;`
-- Removing a user's content: delete the row in the relevant table (and the file in Cloudflare R2 for photos)
+### Becoming an admin
+
+There is an **admin panel at `/admin`** (a "🛡️ Admin" link also appears under "More" for admins). Nobody is an admin by default, and the app can never make someone an admin. You do it once in Supabase:
+
+1. Create your account on the site and log in once.
+2. Supabase -> **Authentication -> Users** -> copy your **User UID**.
+3. Supabase -> **SQL Editor** -> run (with your id pasted in):
+   ```sql
+   insert into public.admins (user_id) values ('PASTE-YOUR-USER-UID-HERE');
+   ```
+4. Reload the site. You'll now see **Admin** under "More" and `/admin` will open.
+
+What admins can do: see growth numbers (people seen, contributors, return rate), triage user **reports** (open / reviewing / actioned / dismissed), **verify or hide business listings**, and **remove** other people's posts, comments and photos (a "remove (admin)" button appears next to them). Admins cannot read private data such as enquiry contact details or emergency contacts. To suspend an account, use Supabase -> Authentication -> Users. When you remove a photo, its file may stay in Cloudflare R2. It costs almost nothing, but you can delete it there too.
+
+**Suggested checklist before you mark a business "Verified"** (the badge tells travellers the YORVIA team checked it, so only give it when you have): confirm the owner's identity, confirm the business is real and operating (for example a phone call or a visit), check any required licences for that kind of business (for example tourism registration for operators), and look for complaints. Remove the badge if problems appear.
 
 ---
 
@@ -169,6 +189,13 @@ Not Vercel settings, but also configured by you:
 | Photos upload but don't display | `NEXT_PUBLIC_MEDIA_BASE_URL` wrong, or the bucket isn't public yet; open the image address directly to test. Redeploy after changing it |
 | "Photo uploads aren't switched on" | `NEXT_PUBLIC_MEDIA_BASE_URL` isn't set (or you haven't redeployed) |
 | Map looks plain or tiles don't load | Set `NEXT_PUBLIC_MAP_STYLE_URL` |
+| "Continue with Google" button missing | Set `NEXT_PUBLIC_GOOGLE_LOGIN=true` (after enabling Google in Supabase) and redeploy |
+| Google login fails with a redirect error | The redirect URI in Google Cloud must exactly match the callback URL Supabase shows, and Supabase's Site URL / Redirect URLs must include your site address |
+| `/admin` says "for YORVIA admins" | Your user id isn't in the `admins` table yet. See section 4 |
+| AI search / summary / photo tool says it isn't set up | `ANTHROPIC_API_KEY` is missing, or `phase10_ai_tools.sql` hasn't been run |
+| "Daily limit reached" on an AI tool | Per-user cap. Raise `AI_SEARCHES_PER_DAY` etc., or wait 24 hours |
+| Weather box says "isn't available" | The free Open-Meteo service couldn't be reached from that browser. It retries on the next visit |
+| Directory or posts pages error with "relation does not exist" | A SQL file from Step 1 hasn't been run. Run the missing one (in order) |
 | A SQL file errors with "already exists" | You ran it before. Harmless |
 | A change doesn't appear after editing a `NEXT_PUBLIC_…` value | Redeploy; those values are fixed at build time |
 
@@ -228,8 +255,24 @@ NEXT_PUBLIC_MEDIA_BASE_URL=https://media.your-domain.com
 | 5 | Dimension ratings, last-visited and condition reports, trip expense splitting, "along a route" search, share buttons, analytics |
 | 6 | Photo upload to Cloudflare R2, galleries, cover photos |
 | 7 | Group polls inside trips (destination, dates, stay, activities) |
+| 8 | Travel feed (posts with photos, likes, comments), follow people, avatars, collections, badges, travel passport |
+| 9 | Weather forecast with alerts, fuel cost estimate, Discover / weekend explorer / budget finder / surprise me, place essentials (toilet, parking, fees...), cost reality (advertised vs paid), emergency page with private contacts and one-tap location sharing |
+| 10 | AI tools: plain-language place search, review summaries, "what place is this?" from a photo |
+| 11 | Business directory (homestays, guides, vehicles, activities) with enquiries, an admin panel, optional Google login |
+| UI | New design, dark mode, mobile bottom bar, installable app (PWA) with an offline page, save itineraries for offline use |
 
-Not built yet (see the backlog): AI natural-language search, review summaries, creator profiles and collections, real road routing, bookings (buses, hotels, activities), vendor and guide panels, parcel carrying, offline mode, native mobile apps.
+### Not built, and why
+
+| Not built | Why |
+|---|---|
+| **Online booking and payments** (hotels, buses, trains, flights, activities) | Needs partner or affiliate API access and approval, and a payment gateway account in your name (for example Razorpay), plus payment-compliance and GST decisions. The app links out to other sites instead, and the directory is enquiry-only |
+| **TripCarry (carrying parcels between travellers)** | Real legal exposure: carriers can be held liable for what is in a parcel. Needs legal advice, ID checks, escrow payments and a prohibited-items process first. See `docs/INTEGRATIONS_AND_PARCELS.md` |
+| **Native Android/iOS apps** | The website works as an installable app (PWA). Store apps are a separate project and cost (Apple $99/year, Google $25 once) |
+| **Toll costs, live crowd levels, live trip tracking** | No reliable data source wired in. Showing guesses as facts would mislead people |
+| **Real road routing for "Along a route"** | Uses a straight-line corridor. Road routing needs a routing provider key (Mapbox, OpenRouteService) and PostGIS |
+| **Email / push notifications** (for enquiries, join requests, replies) | Needs an email sender and notification setup. Today people check the site |
+| **Account suspension screen** | Use Supabase -> Authentication -> Users for now |
+| **Group "AI best compromise" voting, creator earnings, vendor payouts** | Later, once there are users to learn from |
 
 ## 9. More documents
 
