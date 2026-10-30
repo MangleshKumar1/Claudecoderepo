@@ -1,5 +1,13 @@
 # TripMates – Product Plan
 
+> **Where things stand (see these docs first):**
+> - Strategy, research, competitors, validation targets and the full backlog: [PRODUCT_STRATEGY.md](PRODUCT_STRATEGY.md)
+> - Supabase vs Cloudflare and lock-in: [INFRASTRUCTURE_DECISION.md](INFRASTRUCTURE_DECISION.md)
+> - Deploying: [DEPLOYMENT.md](DEPLOYMENT.md)
+> - Parcel carrying, integrations and revenue: [INTEGRATIONS_AND_PARCELS.md](INTEGRATIONS_AND_PARCELS.md)
+>
+> **Built so far (in `web/`):** Phase 1 map, pins, reviews, saves. Phase 2 trips, matching, chat. Phase 3 safety. Phase 4 itineraries and AI planner. Phase 5 dimension ratings, condition reports, trip expenses, route discovery, analytics.
+
 > Costs and competitor details are estimates from general knowledge. Verify current pricing and features before deciding.
 
 ## 1. Vision

@@ -1,0 +1,3 @@
+-- Optional sample data. Replace the UUID with a real user id from auth.users first.
+-- insert into public.places (user_id, title, description, category, lat, lng, best_season, how_to_reach, tips) values
+-- ('00000000-0000-0000-0000-000000000000','Hampta Pass Base','Gentle trek into a hidden valley','trek',32.2396,77.1887,'Jun-Sep','Manali -> Jobra by cab','Carry warm layers');
