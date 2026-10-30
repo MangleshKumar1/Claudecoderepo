@@ -3,7 +3,10 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import MapLoader from "@/components/MapLoader";
+import SafetyTips from "@/components/SafetyTips";
 import TripChat from "@/components/TripChat";
+import TripRatings from "@/components/TripRatings";
+import ReportButton from "@/components/ReportButton";
 import { fmtRange } from "@/components/TripCard";
 import TripCard from "@/components/TripCard";
 import {
@@ -56,6 +59,7 @@ export default function TripPage() {
   const pending = members.filter((m) => m.status === "pending");
   const canChat = Boolean(user) && (isOwner || mine?.status === "approved");
   const full = approved.length >= trip.max_buddies;
+  const ended = trip.end_date < new Date().toISOString().slice(0, 10);
 
   async function onJoin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -71,19 +75,22 @@ export default function TripPage() {
         <strong>{trip.origin ? `${trip.origin} → ` : ""}{trip.destination}</strong> · {fmtRange(trip)}
         {trip.budget_per_person != null && <> · ~₹{trip.budget_per_person}/person</>}
       </p>
-      <p className="muted">Posted by {trip.owner ?? "a traveller"} · {approved.length}/{trip.max_buddies} buddies joined</p>
+      <p className="muted">Posted by <Link href={`/profile/${trip.user_id}`}>{trip.owner ?? "a traveller"}</Link> · {approved.length}/{trip.max_buddies} buddies joined</p>
       {trip.notes && <p>{trip.notes}</p>}
       <MapLoader height={260} center={[trip.dest_lng, trip.dest_lat]} zoom={8}
         places={[{ id: trip.id, user_id: trip.user_id, title: trip.destination, description: null, category: "offbeat",
           lat: trip.dest_lat, lng: trip.dest_lng, best_season: null, how_to_reach: null, tips: null,
           photo_url: null, created_at: trip.created_at }]} />
 
+      <SafetyTips />
+      {!isOwner && <p><ReportButton targetUserId={trip.user_id} tripId={id} label="Report this trip's organiser" /></p>}
+
       <h2>Travellers</h2>
       <ul>
-        <li>{trip.owner ?? "Organiser"} (organiser)</li>
+        <li><Link href={`/profile/${trip.user_id}`}>{trip.owner ?? "Organiser"}</Link> (organiser)</li>
         {approved.map((m) => (
           <li key={m.user_id}>
-            {m.name ?? "Traveller"}
+            <Link href={`/profile/${m.user_id}`}>{m.name ?? "Traveller"}</Link>
             {isOwner && <> <button className="link" disabled={busy} onClick={() => run(() => leaveTrip(id, m.user_id))}>remove</button></>}
           </li>
         ))}
@@ -94,7 +101,7 @@ export default function TripPage() {
           <h3>Join requests</h3>
           {pending.map((m) => (
             <div key={m.user_id} className="review">
-              <strong>{m.name ?? "Traveller"}</strong>
+              <strong><Link href={`/profile/${m.user_id}`}>{m.name ?? "Traveller"}</Link></strong>
               {m.message && <p>{m.message}</p>}
               <button className="primary" disabled={busy || full} onClick={() => run(() => decideMember(id, m.user_id, "approved"))}>Approve</button>{" "}
               <button className="chip" disabled={busy} onClick={() => run(() => decideMember(id, m.user_id, "rejected"))}>Decline</button>
@@ -128,6 +135,11 @@ export default function TripPage() {
           <p className="muted">Only the organiser and approved travellers can see this chat. Don't share sensitive details until you trust the group.</p>
           <TripChat tripId={id} userId={user.id} />
         </>
+      )}
+
+      {ended && canChat && user && (
+        <TripRatings tripId={id} me={user.id}
+          people={[{ id: trip.user_id, name: trip.owner ?? null }, ...approved.map((m) => ({ id: m.user_id, name: m.name ?? null }))]} />
       )}
 
       {isOwner && (

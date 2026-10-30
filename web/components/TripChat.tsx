@@ -1,6 +1,8 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listMessages, sendMessage, subscribeToMessages } from "@/lib/data";
+import Link from "next/link";
+import ReportButton from "./ReportButton";
 import type { TripMessage } from "@/lib/types";
 
 export default function TripChat({ tripId, userId }: { tripId: string; userId: string }) {
@@ -42,8 +44,9 @@ export default function TripChat({ tripId, userId }: { tripId: string; userId: s
         {messages.length === 0 && <p className="muted">No messages yet. Say hi 👋</p>}
         {messages.map((m) => (
           <div key={m.id} className={`bubble ${m.user_id === userId ? "me" : ""}`}>
-            <small>{m.user_id === userId ? "You" : m.author ?? "Traveller"} · {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small>
+            <small>{m.user_id === userId ? "You" : <Link href={`/profile/${m.user_id}`}>{m.author ?? "Traveller"}</Link>} · {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small>
             <div>{m.body}</div>
+            {m.user_id !== userId && <ReportButton targetUserId={m.user_id} tripId={tripId} messageId={m.id} />}
           </div>
         ))}
         <div ref={bottom} />

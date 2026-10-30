@@ -14,7 +14,10 @@ export default function Header() {
         <Link href="/places/new">Pin a place</Link>
         <Link href="/saved">Saved</Link>
         {user ? (
-          <button className="link" onClick={() => getSupabase()?.auth.signOut()}>Log out</button>
+          <>
+            <Link href="/profile/edit">Profile</Link>
+            <button className="link" onClick={() => getSupabase()?.auth.signOut()}>Log out</button>
+          </>
         ) : (
           <Link href="/login">Log in</Link>
         )}

@@ -1,7 +1,9 @@
 import { getSupabase, isConfigured } from "./supabase";
 import { SAMPLE_PLACES, SAMPLE_REVIEWS } from "./sample";
 import { SAMPLE_TRIPS } from "./sampleTrips";
-import type { Category, Place, Review, Trip, TripMember, TripMessage } from "./types";
+import type {
+  Category, Place, Profile, ProfileStats, ReportReason, Review, Trip, TripMember, TripMessage, UserRating,
+} from "./types";
 
 type Stats = { place_id: string; avg_rating: number | null; review_count: number };
 
@@ -235,4 +237,112 @@ export function subscribeToMessages(tripId: string, onChange: () => void): () =>
       onChange)
     .subscribe();
   return () => { sb.removeChannel(channel); };
+}
+
+// ---------- Safety (Phase 3) ----------
+
+export async function getProfile(id: string): Promise<Profile | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data, error } = await sb.from("profiles").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return (data as Profile | null) ?? null;
+}
+
+export async function getProfileStats(id: string): Promise<ProfileStats | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data, error } = await sb.from("profile_stats").select("*").eq("user_id", id).maybeSingle();
+  if (error) throw error;
+  return (data as ProfileStats | null) ?? null;
+}
+
+export type ProfileEdit = Pick<Profile, "display_name" | "username" | "bio" | "home_city" | "languages">;
+
+export async function updateProfile(input: ProfileEdit): Promise<void> {
+  const { sb, uid } = await requireUser();
+  const { error } = await sb.from("profiles").update(input).eq("id", uid);
+  if (error) {
+    throw new Error(error.code === "23505" ? "That username is already taken" : error.message);
+  }
+}
+
+export async function startPhoneVerification(phone: string): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.auth.updateUser({ phone });
+  if (error) throw error;
+}
+
+export async function confirmPhone(phone: string, token: string): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.auth.verifyOtp({ phone, token, type: "phone_change" });
+  if (error) throw error;
+}
+
+export async function listRatingsFor(userId: string): Promise<UserRating[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data, error } = await sb.from("user_ratings").select("*, profiles!user_ratings_rater_id_fkey(display_name)")
+    .eq("ratee_id", userId).order("created_at", { ascending: false }).limit(50);
+  if (error) throw error;
+  return (data ?? []).map((r: Record<string, unknown>) => ({
+    ...(r as unknown as UserRating),
+    rater_name: (r.profiles as { display_name: string | null } | null)?.display_name ?? null,
+  }));
+}
+
+/** Ratings the current user has already given on this trip. */
+export async function listMyRatingsForTrip(tripId: string): Promise<UserRating[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data: u } = await sb.auth.getUser();
+  if (!u.user) return [];
+  const { data, error } = await sb.from("user_ratings").select("*").eq("trip_id", tripId).eq("rater_id", u.user.id);
+  if (error) throw error;
+  return (data ?? []) as UserRating[];
+}
+
+export async function rateUser(input: {
+  trip_id: string; ratee_id: string; rating: number; would_travel_again: boolean | null; comment: string | null;
+}): Promise<void> {
+  const { sb, uid } = await requireUser();
+  const { error } = await sb.from("user_ratings").upsert(
+    { ...input, rater_id: uid }, { onConflict: "trip_id,rater_id,ratee_id" });
+  if (error) {
+    throw new Error(error.code === "42501" ? "You can only rate people after the trip has ended" : error.message);
+  }
+}
+
+export async function reportUser(input: {
+  target_user_id: string; reason: ReportReason; details: string | null;
+  trip_id?: string | null; message_id?: string | null;
+}): Promise<void> {
+  const { sb, uid } = await requireUser();
+  const { error } = await sb.from("reports").insert({
+    reporter_id: uid, target_user_id: input.target_user_id, reason: input.reason, details: input.details,
+    trip_id: input.trip_id ?? null, message_id: input.message_id ?? null,
+  });
+  if (error) throw error;
+}
+
+export async function listBlocked(): Promise<{ id: string; name: string | null }[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data: u } = await sb.auth.getUser();
+  if (!u.user) return [];
+  const { data, error } = await sb.from("blocks").select("blocked_id, profiles!blocks_blocked_id_fkey(display_name)")
+    .eq("blocker_id", u.user.id);
+  if (error) throw error;
+  return (data ?? []).map((b: Record<string, unknown>) => ({
+    id: b.blocked_id as string,
+    name: (b.profiles as { display_name: string | null } | null)?.display_name ?? null,
+  }));
+}
+
+export async function setBlocked(userId: string, blocked: boolean): Promise<void> {
+  const { sb, uid } = await requireUser();
+  const { error } = blocked
+    ? await sb.from("blocks").insert({ blocker_id: uid, blocked_id: userId })
+    : await sb.from("blocks").delete().eq("blocker_id", uid).eq("blocked_id", userId);
+  if (error) throw error;
 }

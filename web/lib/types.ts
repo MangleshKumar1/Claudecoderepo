@@ -76,3 +76,45 @@ export type TripMessage = {
   created_at: string;
   author?: string | null;
 };
+
+export type Profile = {
+  id: string;
+  username: string | null;
+  display_name: string | null;
+  bio: string | null;
+  home_city: string | null;
+  languages: string[];
+  phone_verified: boolean;
+  email_verified: boolean;
+  created_at: string;
+};
+
+export type ProfileStats = {
+  user_id: string;
+  rating_avg: number | null;
+  rating_count: number;
+  trips_hosted: number;
+  trips_joined: number;
+};
+
+export type UserRating = {
+  id: string;
+  trip_id: string;
+  rater_id: string;
+  ratee_id: string;
+  rating: number;
+  would_travel_again: boolean | null;
+  comment: string | null;
+  created_at: string;
+  rater_name?: string | null;
+};
+
+export const REPORT_REASONS = [
+  ["harassment", "Harassment or abuse"],
+  ["scam", "Scam or fraud"],
+  ["fake_profile", "Fake profile"],
+  ["unsafe_behavior", "Unsafe behaviour"],
+  ["inappropriate_content", "Inappropriate content"],
+  ["other", "Other"],
+] as const;
+export type ReportReason = (typeof REPORT_REASONS)[number][0];
