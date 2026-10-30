@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   const auth = await authedClient(req);
   if (!auth) return NextResponse.json({ error: "Please log in to upload photos." }, { status: 401 });
 
-  let body: { contentType?: unknown; size?: unknown };
+  let body: { contentType?: unknown; size?: unknown; kind?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -52,6 +52,7 @@ export async function POST(req: Request) {
   }
   const contentType = body.contentType as AllowedType;
   const size = Number(body.size);
+  const kind = (["places", "posts", "avatars"] as const).find((k) => k === body.kind) ?? "places";
   if (!(contentType in ALLOWED_TYPES)) {
     return NextResponse.json({ error: "Only JPG, PNG or WebP images are allowed." }, { status: 400 });
   }
@@ -66,7 +67,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `Daily upload limit reached (${DAILY_LIMIT} photos). Try again tomorrow.` }, { status: 429 });
   }
 
-  const key = `places/${auth.uid}/${randomUUID()}.${ALLOWED_TYPES[contentType]}`;
+  const key = `${kind}/${auth.uid}/${randomUUID()}.${ALLOWED_TYPES[contentType]}`;
   const { error: logErr } = await auth.sb.from("media_uploads").insert({ user_id: auth.uid, storage_key: key, bytes: size });
   if (logErr) return NextResponse.json({ error: "Could not start the upload." }, { status: 500 });
 
@@ -91,7 +92,28 @@ export async function DELETE(req: Request) {
   const auth = await authedClient(req);
   if (!auth) return NextResponse.json({ error: "Please log in." }, { status: 401 });
 
-  const id = new URL(req.url).searchParams.get("id");
+  const params = new URL(req.url).searchParams;
+
+  // Delete one of your posts together with its photo files
+  const postId = params.get("post");
+  if (postId) {
+    if (!/^[0-9a-f-]{36}$/i.test(postId)) return NextResponse.json({ error: "Bad request." }, { status: 400 });
+    const { data: post } = await auth.sb.from("posts").select("id,user_id").eq("id", postId).maybeSingle();
+    if (!post || post.user_id !== auth.uid) return NextResponse.json({ error: "Post not found." }, { status: 404 });
+    const { data: photos } = await auth.sb.from("post_photos").select("storage_key").eq("post_id", postId);
+    const { error: delErr } = await auth.sb.from("posts").delete().eq("id", postId);
+    if (delErr) return NextResponse.json({ error: "Could not delete the post." }, { status: 500 });
+    for (const p of photos ?? []) {
+      try {
+        await storage.client.send(new DeleteObjectCommand({ Bucket: storage.bucket, Key: p.storage_key }));
+      } catch (e) {
+        console.error("Post deleted but a file could not be removed", p.storage_key, e);
+      }
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  const id = params.get("id");
   if (!id || !/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ error: "Bad request." }, { status: 400 });
 
   const { data: row } = await auth.sb.from("place_photos").select("storage_key,user_id").eq("id", id).maybeSingle();

@@ -3,9 +3,10 @@ import { getSupabase, isConfigured } from "./supabase";
 import { SAMPLE_PLACES, SAMPLE_REVIEWS } from "./sample";
 import type { Plan, PlanRequestT } from "./planSchema";
 import { SAMPLE_TRIPS } from "./sampleTrips";
+import { uploadImage } from "./upload";
 import type {
-  Category, ConditionKind, Itinerary, ItineraryItem, Place, PlaceReport, PlaceStats, Profile, ProfileStats, ReportReason,
-  PlacePhoto, Poll, PollKind, Review, Trip, TripExpense, TripMember, TripMessage, UserRating,
+  Activity, Category, Collection, ConditionKind, Itinerary, ItineraryItem, Place, PlaceReport, PlaceStats, Profile, ProfileStats, ReportReason,
+  PlacePhoto, Poll, PollKind, Post, PostComment, Review, Trip, TripExpense, TripMember, TripMessage, UserRating,
 } from "./types";
 
 type Stats = { place_id: string; avg_rating: number | null; review_count: number };
@@ -659,5 +660,228 @@ export async function setPollStatus(pollId: string, status: "open" | "closed"): 
 export async function deletePoll(pollId: string): Promise<void> {
   const { sb } = await requireUser();
   const { error } = await sb.from("polls").delete().eq("id", pollId);
+  if (error) throw error;
+}
+
+// ---------- Social: posts, likes, comments, follows, collections (Phase 8) ----------
+
+type ProfileRef = { display_name: string | null; avatar_key: string | null } | null;
+
+export async function getActivity(userId: string): Promise<Activity | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data, error } = await sb.from("profile_activity").select("*").eq("user_id", userId).maybeSingle();
+  if (error) throw error;
+  return (data as Activity | null) ?? null;
+}
+
+export async function setAvatar(key: string): Promise<void> {
+  const { sb, uid } = await requireUser();
+  const { error } = await sb.from("profiles").update({ avatar_key: key }).eq("id", uid);
+  if (error) throw error;
+}
+
+export async function isFollowing(userId: string): Promise<boolean> {
+  const sb = getSupabase();
+  if (!sb) return false;
+  const { data: u } = await sb.auth.getUser();
+  if (!u.user) return false;
+  const { data } = await sb.from("follows").select("followee_id").eq("follower_id", u.user.id).eq("followee_id", userId).maybeSingle();
+  return Boolean(data);
+}
+
+export async function setFollowing(userId: string, follow: boolean): Promise<void> {
+  const { sb, uid } = await requireUser();
+  const { error } = follow
+    ? await sb.from("follows").insert({ follower_id: uid, followee_id: userId })
+    : await sb.from("follows").delete().eq("follower_id", uid).eq("followee_id", userId);
+  if (error) throw error;
+  if (follow) track("followed");
+}
+
+export async function listFollowingIds(): Promise<string[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data: u } = await sb.auth.getUser();
+  if (!u.user) return [];
+  const { data } = await sb.from("follows").select("followee_id").eq("follower_id", u.user.id);
+  return (data ?? []).map((r: { followee_id: string }) => r.followee_id);
+}
+
+export const POSTS_PAGE = 12;
+
+/** Newest first. `userIds` limits to specific authors (e.g. people you follow). `before` is a created_at cursor. */
+export async function listPosts(opts: { userIds?: string[]; before?: string; postId?: string } = {}): Promise<Post[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  let q = sb.from("posts").select("*, profiles(display_name, avatar_key), places(title)").order("created_at", { ascending: false });
+  if (opts.postId) q = q.eq("id", opts.postId);
+  else q = q.limit(POSTS_PAGE);
+  if (opts.userIds) {
+    if (opts.userIds.length === 0) return [];
+    q = q.in("user_id", opts.userIds);
+  }
+  if (opts.before) q = q.lt("created_at", opts.before);
+  const { data, error } = await q;
+  if (error) throw error;
+  const rows = (data ?? []) as (Record<string, unknown> & { id: string })[];
+  if (rows.length === 0) return [];
+  const ids = rows.map((r) => r.id);
+  const { data: u } = await sb.auth.getUser();
+  const [photos, stats, mine] = await Promise.all([
+    sb.from("post_photos").select("id, post_id, storage_key, position").in("post_id", ids).order("position"),
+    sb.from("post_stats").select("*").in("post_id", ids),
+    u.user ? sb.from("post_likes").select("post_id").eq("user_id", u.user.id).in("post_id", ids) : Promise.resolve({ data: [] }),
+  ]);
+  const likedSet = new Set(((mine.data ?? []) as { post_id: string }[]).map((l) => l.post_id));
+  return rows.map((r) => {
+    const st = ((stats.data ?? []) as { post_id: string; likes: number; comments: number }[]).find((s) => s.post_id === r.id);
+    const prof = r.profiles as ProfileRef;
+    return {
+      id: r.id, user_id: r.user_id as string, body: r.body as string, place_id: (r.place_id as string | null) ?? null,
+      created_at: r.created_at as string, author_name: prof?.display_name ?? null, author_avatar: prof?.avatar_key ?? null,
+      place_title: (r.places as { title: string } | null)?.title ?? null,
+      photos: ((photos.data ?? []) as { id: string; post_id: string; storage_key: string }[])
+        .filter((p) => p.post_id === r.id).map((p) => ({ id: p.id, storage_key: p.storage_key })),
+      likes: st?.likes ?? 0, comments: st?.comments ?? 0, liked_by_me: likedSet.has(r.id),
+    };
+  });
+}
+
+/** Uploads photos first, then creates the post, so a failed upload never leaves a half-made post. */
+export async function createPost(body: string, placeId: string | null, files: File[]): Promise<string> {
+  const { sb, uid } = await requireUser();
+  const keys: string[] = [];
+  for (const f of files.slice(0, 4)) keys.push(await uploadImage(f, "posts"));
+  const { data, error } = await sb.from("posts").insert({ user_id: uid, body, place_id: placeId }).select("id").single();
+  if (error) throw error;
+  const id = data.id as string;
+  if (keys.length) {
+    const { error: e2 } = await sb.from("post_photos").insert(keys.map((storage_key, position) => ({ post_id: id, user_id: uid, storage_key, position })));
+    if (e2) {
+      await sb.from("posts").delete().eq("id", id);
+      throw e2;
+    }
+  }
+  track("post_created", { photos: keys.length });
+  return id;
+}
+
+export async function deletePost(id: string): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) throw new Error("Supabase is not configured");
+  const { data } = await sb.auth.getSession();
+  if (!data.session) throw new Error("Please log in first");
+  const res = await fetch(`/api/upload?post=${encodeURIComponent(id)}`, { method: "DELETE", headers: { Authorization: `Bearer ${data.session.access_token}` } });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Could not delete the post.");
+}
+
+export async function setLiked(postId: string, liked: boolean): Promise<void> {
+  const { sb, uid } = await requireUser();
+  const { error } = liked
+    ? await sb.from("post_likes").insert({ post_id: postId, user_id: uid })
+    : await sb.from("post_likes").delete().eq("post_id", postId).eq("user_id", uid);
+  if (error) throw error;
+  if (liked) track("post_liked");
+}
+
+export async function listComments(postId: string): Promise<PostComment[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data, error } = await sb.from("post_comments").select("*, profiles(display_name, avatar_key)").eq("post_id", postId).order("created_at");
+  if (error) throw error;
+  return (data ?? []).map((c: Record<string, unknown>) => {
+    const prof = c.profiles as ProfileRef;
+    return { ...(c as unknown as PostComment), author_name: prof?.display_name ?? null, author_avatar: prof?.avatar_key ?? null };
+  });
+}
+
+export async function addComment(postId: string, body: string): Promise<void> {
+  const { sb, uid } = await requireUser();
+  const { error } = await sb.from("post_comments").insert({ post_id: postId, user_id: uid, body });
+  if (error) throw error;
+  track("comment_added");
+}
+
+export async function deleteComment(id: string): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from("post_comments").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function listVisitedPlaces(userId: string): Promise<{ id: string; title: string; category: string }[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data, error } = await sb.from("reviews").select("created_at, places(id, title, category)").eq("user_id", userId).order("created_at", { ascending: false }).limit(60);
+  if (error) throw error;
+  return (data ?? []).map((r: Record<string, unknown>) => r.places as { id: string; title: string; category: string } | null).filter((p): p is { id: string; title: string; category: string } => Boolean(p));
+}
+
+// ---- collections ----
+export async function listCollections(opts: { mine?: boolean; userId?: string } = {}): Promise<Collection[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  let q = sb.from("collections").select("*, profiles(display_name), collection_places(count)").order("created_at", { ascending: false }).limit(60);
+  if (opts.userId) q = q.eq("user_id", opts.userId).eq("is_public", true);
+  else if (opts.mine) {
+    const { data: u } = await sb.auth.getUser();
+    if (!u.user) return [];
+    q = q.eq("user_id", u.user.id);
+  } else q = q.eq("is_public", true);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []).map((c: Record<string, unknown>) => ({
+    ...(c as unknown as Collection),
+    owner_name: (c.profiles as { display_name: string | null } | null)?.display_name ?? null,
+    place_count: (c.collection_places as { count: number }[] | null)?.[0]?.count ?? 0,
+  }));
+}
+
+export async function getCollection(id: string): Promise<Collection | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data, error } = await sb.from("collections").select("*, profiles(display_name)").eq("id", id).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return { ...(data as unknown as Collection), owner_name: (data.profiles as { display_name: string | null } | null)?.display_name ?? null };
+}
+
+export async function listCollectionPlaces(id: string): Promise<Place[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data, error } = await sb.from("collection_places").select("added_at, places(*)").eq("collection_id", id).order("added_at");
+  if (error) throw error;
+  return (data ?? []).map((r: Record<string, unknown>) => r.places as Place | null).filter((p): p is Place => Boolean(p));
+}
+
+export async function createCollection(title: string, description: string | null, isPublic: boolean): Promise<string> {
+  const { sb, uid } = await requireUser();
+  const { data, error } = await sb.from("collections").insert({ user_id: uid, title, description, is_public: isPublic }).select("id").single();
+  if (error) throw error;
+  track("collection_created");
+  return data.id as string;
+}
+
+export async function updateCollection(id: string, patch: { title?: string; description?: string | null; is_public?: boolean }): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from("collections").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCollection(id: string): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from("collections").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function addToCollection(collectionId: string, placeId: string): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from("collection_places").insert({ collection_id: collectionId, place_id: placeId });
+  if (error) throw new Error(error.code === "23505" ? "Already in this collection" : error.message);
+}
+
+export async function removeFromCollection(collectionId: string, placeId: string): Promise<void> {
+  const { sb } = await requireUser();
+  const { error } = await sb.from("collection_places").delete().eq("collection_id", collectionId).eq("place_id", placeId);
   if (error) throw error;
 }

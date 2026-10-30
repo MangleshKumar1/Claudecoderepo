@@ -92,6 +92,7 @@ export type Profile = {
   languages: string[];
   phone_verified: boolean;
   email_verified: boolean;
+  avatar_key: string | null;
   created_at: string;
 };
 
@@ -238,4 +239,53 @@ export type Poll = {
   created_at: string;
   options: PollOption[];
   votes: PollVote[];
+};
+
+// ---------- Social (Phase 8) ----------
+export type Post = {
+  id: string;
+  user_id: string;
+  body: string;
+  place_id: string | null;
+  created_at: string;
+  author_name: string | null;
+  author_avatar: string | null;
+  place_title: string | null;
+  photos: { id: string; storage_key: string }[];
+  likes: number;
+  comments: number;
+  liked_by_me: boolean;
+};
+
+export type PostComment = {
+  id: string;
+  post_id: string;
+  user_id: string;
+  body: string;
+  created_at: string;
+  author_name: string | null;
+  author_avatar: string | null;
+};
+
+export type Collection = {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  is_public: boolean;
+  created_at: string;
+  owner_name?: string | null;
+  place_count?: number;
+};
+
+export type Activity = {
+  user_id: string;
+  pins: number;
+  reviews: number;
+  photos: number;
+  condition_reports: number;
+  posts: number;
+  collections: number;
+  followers: number;
+  following: number;
 };

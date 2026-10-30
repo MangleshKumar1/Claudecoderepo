@@ -3,7 +3,9 @@ import { MAX_UPLOAD_BYTES } from "./media";
 import { getSupabase } from "./supabase";
 
 /** Compresses a photo, uploads it straight to the media bucket, and returns its storage key. */
-export async function uploadImage(file: File): Promise<string> {
+export type UploadKind = "places" | "posts" | "avatars";
+
+export async function uploadImage(file: File, kind: UploadKind = "places"): Promise<string> {
   const sb = getSupabase();
   if (!sb) throw new Error("Supabase is not configured");
   const { data } = await sb.auth.getSession();
@@ -16,7 +18,7 @@ export async function uploadImage(file: File): Promise<string> {
   const res = await fetch("/api/upload", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}` },
-    body: JSON.stringify({ contentType: "image/jpeg", size: blob.size }),
+    body: JSON.stringify({ contentType: "image/jpeg", size: blob.size, kind }),
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error ?? "Could not start the upload.");

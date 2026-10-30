@@ -8,10 +8,12 @@ import { useUser } from "@/lib/useUser";
 
 const MAIN = [
   ["/explore", "Explore"],
+  ["/feed", "Feed"],
   ["/trips", "Trips"],
   ["/itineraries", "Itineraries"],
 ] as const;
 const MORE = [
+  ["/collections", "🗂️ Collections"],
   ["/route", "🛣️ Along a route"],
   ["/places/new", "📍 Pin a place"],
   ["/saved", "★ Saved"],

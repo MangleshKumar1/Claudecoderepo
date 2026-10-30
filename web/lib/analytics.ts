@@ -4,7 +4,9 @@ export type EventName =
   | "page_view" | "place_created" | "place_saved" | "review_created" | "condition_reported"
   | "trip_created" | "join_requested" | "itinerary_created" | "ai_plan_generated" | "expense_added"
   | "invite_shared" | "route_search" | "report_filed" | "photo_uploaded"
-  | "poll_created" | "poll_voted";
+  | "poll_created" | "poll_voted" | "post_created" | "post_liked" | "comment_added" | "followed"
+  | "collection_created" | "ai_search" | "ai_summary" | "photo_identified" | "listing_created" | "enquiry_sent"
+  | "sos_opened" | "surprise_me" | "weather_checked";
 
 const ANON_KEY = "yorvia_anon_id";
 

@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import MapLoader from "@/components/MapLoader";
 import { catEmoji, catLabel } from "@/lib/categories";
+import AddToCollection from "@/components/AddToCollection";
 import PhotoGallery from "@/components/PhotoGallery";
 import PhotoUploader from "@/components/PhotoUploader";
 import ShareButton from "@/components/ShareButton";
@@ -111,6 +112,7 @@ export default function PlacePage() {
       <p className="muted">{avg ? `★ ${avg} from ${reviews.length} review(s)` : "No reviews yet"}</p>
       <p><button className="chip" onClick={onSave}>{saved ? "★ Saved" : "☆ Save"}</button> <ShareButton title={place.title} /></p>
       <MapLoader height={300} places={[place]} center={[place.lng, place.lat]} zoom={9} />
+      {user && <AddToCollection placeId={id} />}
       <PhotoGallery photos={photos} me={user?.id ?? null} placeId={id} onChange={load} />
       {user && <PhotoUploader placeId={id} onDone={load} />}
       {place.photo_url && <p><img src={place.photo_url} alt={place.title} style={{ maxWidth: "100%", borderRadius: 12 }} /></p>}
