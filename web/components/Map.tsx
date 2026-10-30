@@ -14,7 +14,9 @@ type Props = {
   zoom?: number;
 };
 
-const STYLE = "https://demotiles.maplibre.org/style.json"; // swap for MapTiler/Stadia/Mapbox in production
+// MapLibre's demo tiles are for development only. For production set NEXT_PUBLIC_MAP_STYLE_URL to a
+// style from MapTiler, Stadia Maps, etc. (e.g. https://api.maptiler.com/maps/streets-v2/style.json?key=YOUR_KEY).
+const STYLE = process.env.NEXT_PUBLIC_MAP_STYLE_URL || "https://demotiles.maplibre.org/style.json";
 
 export default function Map({ places = [], height = 480, onPick, picked, center, zoom }: Props) {
   const el = useRef<HTMLDivElement>(null);
