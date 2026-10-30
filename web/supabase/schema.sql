@@ -31,7 +31,7 @@ create index if not exists places_geo_idx on public.places (lat, lng);
 create table if not exists public.reviews (
   id uuid primary key default gen_random_uuid(),
   place_id uuid not null references public.places on delete cascade,
-  user_id uuid not null references auth.users on delete cascade,
+  user_id uuid not null references public.profiles on delete cascade,
   rating int not null check (rating between 1 and 5),
   pros text,
   cons text,

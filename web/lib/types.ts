@@ -36,3 +36,43 @@ export type Review = {
   created_at: string;
   author?: string | null;
 };
+
+export const TRIP_STYLES = ["budget", "comfort", "adventure", "relaxed", "mixed"] as const;
+export type TripStyle = (typeof TRIP_STYLES)[number];
+
+export type Trip = {
+  id: string;
+  user_id: string;
+  title: string;
+  origin: string | null;
+  destination: string;
+  dest_lat: number;
+  dest_lng: number;
+  start_date: string; // YYYY-MM-DD
+  end_date: string;
+  budget_per_person: number | null;
+  style: TripStyle;
+  max_buddies: number;
+  notes: string | null;
+  created_at: string;
+  owner?: string | null;
+  member_count?: number; // approved members excluding the owner
+};
+
+export type TripMember = {
+  trip_id: string;
+  user_id: string;
+  status: "pending" | "approved" | "rejected";
+  message: string | null;
+  created_at: string;
+  name?: string | null;
+};
+
+export type TripMessage = {
+  id: string;
+  trip_id: string;
+  user_id: string;
+  body: string;
+  created_at: string;
+  author?: string | null;
+};
