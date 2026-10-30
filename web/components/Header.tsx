@@ -1,29 +1,54 @@
 "use client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import Logo from "./Logo";
 import { getSupabase } from "@/lib/supabase";
+import { clearOffline } from "@/lib/offline";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 import { useUser } from "@/lib/useUser";
+
+const MAIN = [
+  ["/explore", "Explore"],
+  ["/feed", "Feed"],
+  ["/trips", "Trips"],
+  ["/itineraries", "Itineraries"],
+  ["/directory", "Directory"],
+] as const;
+const MORE = [
+  ["/discover", "🎲 Discover / surprise me"],
+  ["/identify", "📸 What place is this?"],
+  ["/collections", "🗂️ Collections"],
+  ["/route", "🛣️ Along a route"],
+  ["/places/new", "📍 Pin a place"],
+  ["/saved", "★ Saved"],
+  ["/sos", "🆘 Emergency"],
+] as const;
 
 export default function Header() {
   const { user } = useUser();
+  const isAdmin = useIsAdmin();
+  const path = usePathname() || "/";
+  const on = (href: string) => (path === href || path.startsWith(href + "/") ? "on" : "");
   return (
     <header className="header">
-      <Link href="/" className="brand">TripMates</Link>
-      <nav>
-        <Link href="/explore">Explore</Link>
-        <Link href="/route">Along a route</Link>
-        <Link href="/trips">Trips</Link>
-        <Link href="/itineraries">Itineraries</Link>
-        <Link href="/places/new">Pin a place</Link>
-        <Link href="/saved">Saved</Link>
+      <Link href="/" className="brand"><Logo />YORVIA</Link>
+      <nav className="nav-desktop" aria-label="Main">
+        {MAIN.map(([href, label]) => <Link key={href} href={href} className={on(href)}>{label}</Link>)}
+        <details className="more">
+          <summary>More ▾</summary>
+          <div className="menu">{MORE.map(([href, label]) => <Link key={href} href={href}>{label}</Link>)}{isAdmin && <Link href="/admin">🛡️ Admin</Link>}</div>
+        </details>
+      </nav>
+      <div className="header-actions">
         {user ? (
           <>
-            <Link href="/profile/edit">Profile</Link>
-            <button className="link" onClick={() => getSupabase()?.auth.signOut()}>Log out</button>
+            <Link href="/profile/edit" className="chip">Profile</Link>
+            <button className="chip" onClick={() => { clearOffline(); getSupabase()?.auth.signOut(); }}>Log out</button>
           </>
         ) : (
-          <Link href="/login">Log in</Link>
+          <Link href="/login" className="btn">Log in</Link>
         )}
-      </nav>
+      </div>
     </header>
   );
 }

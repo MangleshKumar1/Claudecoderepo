@@ -1,4 +1,4 @@
--- TripMates Phase 5: richer place info, condition reports, trip expenses, analytics.
+-- YORVIA Phase 5: richer place info, condition reports, trip expenses, analytics.
 -- Run AFTER schema.sql, phase2_trips.sql, phase3_safety.sql, phase4_itineraries.sql. Run once.
 
 -- ---------- More place categories (waterfalls, viewpoints, rest stops) ----------

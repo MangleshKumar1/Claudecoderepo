@@ -1,9 +1,12 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import Avatar from "@/components/Avatar";
 import VerifiedBadge from "@/components/VerifiedBadge";
+import { uploadsEnabled } from "@/lib/media";
+import { uploadImage } from "@/lib/upload";
 import {
-  confirmPhone, getProfile, listBlocked, setBlocked, startPhoneVerification, updateProfile,
+  confirmPhone, getProfile, listBlocked, setAvatar, setBlocked, startPhoneVerification, updateProfile,
 } from "@/lib/data";
 import type { Profile } from "@/lib/types";
 import { useUser } from "@/lib/useUser";
@@ -47,6 +50,20 @@ export default function EditProfile() {
     setBusy(false);
   }
 
+  async function onAvatar(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      await setAvatar(await uploadImage(file, "avatars"));
+      setMsg({ text: "Profile photo updated.", ok: true });
+      await load();
+    } catch (err) { fail(err); }
+    e.target.value = "";
+    setBusy(false);
+  }
+
   async function sendCode() {
     setBusy(true);
     setMsg(null);
@@ -78,7 +95,18 @@ export default function EditProfile() {
   return (
     <>
       <h1>Your profile</h1>
-      <p><VerifiedBadge profile={profile} /> <Link href={`/profile/${user.id}`}>View public profile</Link></p>
+      <div className="profileHead">
+        <Avatar name={profile.display_name} avatarKey={profile.avatar_key} size={72} />
+        <div>
+          <p style={{ margin: "0 0 6px" }}><VerifiedBadge profile={profile} /> <Link href={`/profile/${user.id}`}>View public profile</Link></p>
+          {uploadsEnabled && (
+            <label className="chip" style={{ cursor: busy ? "wait" : "pointer" }}>
+              📷 Change profile photo
+              <input type="file" accept="image/*" hidden disabled={busy} onChange={onAvatar} />
+            </label>
+          )}
+        </div>
+      </div>
 
       <form className="stack" onSubmit={save}>
         <label>Display name<input name="display_name" required maxLength={60} defaultValue={profile.display_name ?? ""} /></label>

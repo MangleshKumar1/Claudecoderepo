@@ -3,7 +3,10 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import MapLoader from "@/components/MapLoader";
+import PlanLogistics from "@/components/PlanLogistics";
 import ShareButton from "@/components/ShareButton";
+import WeatherCard from "@/components/WeatherCard";
+import { isSavedOffline, removeOffline, saveOffline } from "@/lib/offline";
 import {
   addItem, deleteItem, deleteItinerary, getItinerary, getTrip, listItems, listMembers, swapItems,
   updateItem, updateItinerary,
@@ -25,6 +28,7 @@ export default function ItineraryPage() {
   const [editing, setEditing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [offline, setOffline] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -44,6 +48,7 @@ export default function ItineraryPage() {
     }
   }, [id, user]);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { setOffline(isSavedOffline(id)); }, [id]);
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -113,7 +118,13 @@ export default function ItineraryPage() {
         {it.destination} · by <Link href={`/profile/${it.user_id}`}>{it.owner ?? "a traveller"}</Link>
         {trip && <> · for trip <Link href={`/trips/${trip.id}`}>{trip.title}</Link></>}
       </p>
-      {it.is_public && <p><ShareButton title={it.title} label="Share itinerary" /></p>}
+      <p>
+        {it.is_public && <><ShareButton title={it.title} label="Share itinerary" />{" "}</>}
+        <button className="chip" onClick={() => {
+          if (offline) { removeOffline(id); setOffline(false); } else { saveOffline(it, items); setOffline(true); }
+        }}>{offline ? "✓ Saved offline (remove)" : "⬇ Save offline"}</button>
+        {offline && <small className="muted"> Stored only on this device. It's cleared when you log out.</small>}
+      </p>
       {it.summary && <p>{it.summary}</p>}
       {it.ai_generated && <p className="muted"><small>Generated with AI. Prices and opening hours are estimates, so verify them before you go.</small></p>}
 
@@ -126,6 +137,7 @@ export default function ItineraryPage() {
         )}
       </p>
 
+      {it.dest_lat != null && it.dest_lng != null && <WeatherCard lat={it.dest_lat} lng={it.dest_lng} label={it.destination} />}
       {pins.length > 0 && <MapLoader height={300} places={pins} center={center} zoom={pins.length > 1 ? 6 : 10} />}
 
       {byDay.map((dayItems, d) => {
@@ -165,6 +177,8 @@ export default function ItineraryPage() {
       {isOwner && (
         <p><button className="chip" disabled={busy} onClick={() => run(() => updateItinerary(id, { num_days: Math.min(30, byDay.length + 1) }))}>+ Add a day</button></p>
       )}
+
+      <PlanLogistics destination={it.destination} lat={it.dest_lat} lng={it.dest_lng} checkin={it.start_date} />
 
       {it.extra_notes && (
         <>

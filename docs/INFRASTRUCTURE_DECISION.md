@@ -53,7 +53,7 @@ Free plans commonly have limits and may pause inactive projects, so check before
 
 ## What to do now (cheap, worth it)
 
-1. **Media on Cloudflare R2, not Supabase Storage.** Store only the photo URL in the database. R2's pricing is built around not charging for egress; verify current terms. (Photo upload isn't built yet; the app currently takes a URL. When we build it, we'll use R2 with signed uploads from a server route.)
+1. **Media on Cloudflare R2, not Supabase Storage.** Store only the photo URL in the database. R2's pricing is built around not charging for egress; verify current terms. (Built in Phase 6: photos upload straight to R2 through short-lived signed links from a server route. See `docs/CLOUDFLARE_R2_SETUP.md`.)
 2. **Keep database calls in `web/lib/data.ts`.** New features go there. Where a page calls Supabase directly, leave a short comment so a future migration can find it.
 3. **SQL files stay the source of truth.** Never change the live database by hand without saving a numbered file in `web/supabase/`.
 4. **Avoid Supabase-only extras unless they pay for themselves.** Plain Postgres + PostGIS covers geo search (PostGIS is an extension you can enable in Supabase and any Postgres host).

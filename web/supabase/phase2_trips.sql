@@ -1,4 +1,4 @@
--- TripMates Phase 2: trips, matching, join requests, chat.
+-- YORVIA Phase 2: trips, matching, join requests, chat.
 -- Run AFTER schema.sql, in the Supabase SQL editor.
 
 -- Fix for databases created from the first version of schema.sql:

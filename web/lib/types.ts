@@ -19,6 +19,17 @@ export type Place = {
   created_at: string;
   avg_rating?: number | null;
   review_count?: number;
+  cover_key?: string | null; // storage key of the first uploaded photo
+  toilet?: "yes_clean" | "yes_poor" | "no" | null;
+  drinking_water?: boolean | null;
+  parking?: "free" | "paid" | "none" | null;
+  fuel_nearby?: boolean | null;
+  atm_nearby?: boolean | null;
+  wheelchair_access?: boolean | null;
+  mobile_network?: "none" | "weak" | "good" | null;
+  entry_fee?: number | null;
+  parking_fee?: number | null;
+  typical_cost_per_day?: number | null;
 };
 
 export type Review = {
@@ -38,6 +49,8 @@ export type Review = {
   accessibility_rating: number | null;
   cleanliness_rating: number | null;
   crowd_rating: number | null;
+  advertised_price: number | null;
+  actual_price: number | null;
   created_at: string;
   author?: string | null;
 };
@@ -91,6 +104,7 @@ export type Profile = {
   languages: string[];
   phone_verified: boolean;
   email_verified: boolean;
+  avatar_key: string | null;
   created_at: string;
 };
 
@@ -207,4 +221,128 @@ export type TripExpense = {
   category: ExpenseCategory;
   created_at: string;
   payer?: string | null;
+};
+
+export type PlacePhoto = {
+  id: string;
+  place_id: string;
+  user_id: string;
+  storage_key: string;
+  caption: string | null;
+  created_at: string;
+  uploader?: string | null;
+};
+
+export const POLL_KINDS = [
+  ["destination", "Destination"], ["dates", "Dates"], ["stay", "Where to stay"],
+  ["activity", "Activity"], ["transport", "Transport"], ["other", "Something else"],
+] as const;
+export type PollKind = (typeof POLL_KINDS)[number][0];
+
+export type PollOption = { id: string; poll_id: string; label: string; added_by: string };
+export type PollVote = { poll_id: string; option_id: string; user_id: string; voter?: string | null };
+export type Poll = {
+  id: string;
+  trip_id: string;
+  created_by: string;
+  question: string;
+  kind: PollKind;
+  status: "open" | "closed";
+  created_at: string;
+  options: PollOption[];
+  votes: PollVote[];
+};
+
+// ---------- Social (Phase 8) ----------
+export type Post = {
+  id: string;
+  user_id: string;
+  body: string;
+  place_id: string | null;
+  created_at: string;
+  author_name: string | null;
+  author_avatar: string | null;
+  place_title: string | null;
+  photos: { id: string; storage_key: string }[];
+  likes: number;
+  comments: number;
+  liked_by_me: boolean;
+};
+
+export type PostComment = {
+  id: string;
+  post_id: string;
+  user_id: string;
+  body: string;
+  created_at: string;
+  author_name: string | null;
+  author_avatar: string | null;
+};
+
+export type Collection = {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  is_public: boolean;
+  created_at: string;
+  owner_name?: string | null;
+  place_count?: number;
+};
+
+export type Activity = {
+  user_id: string;
+  pins: number;
+  reviews: number;
+  photos: number;
+  condition_reports: number;
+  posts: number;
+  collections: number;
+  followers: number;
+  following: number;
+};
+
+// ---------- Directory & admin (Phase 11) ----------
+export const LISTING_KINDS = [
+  ["stay", "🛏️", "Stays"], ["guide", "🧑‍🏫", "Local guides"], ["vehicle", "🚗", "Vehicles"],
+  ["activity", "🎟️", "Activities"], ["operator", "🧭", "Tour operators"], ["food", "🍜", "Food"],
+] as const;
+export type ListingKind = (typeof LISTING_KINDS)[number][0];
+export const PRICE_UNITS = ["per night", "per day", "per person", "per trip"] as const;
+export type PriceUnit = (typeof PRICE_UNITS)[number];
+
+export type Listing = {
+  id: string;
+  owner_id: string;
+  kind: ListingKind;
+  name: string;
+  description: string | null;
+  city: string | null;
+  price_from: number | null;
+  price_unit: PriceUnit | null;
+  website: string | null;
+  photo_key: string | null;
+  verified: boolean;
+  hidden_by_admin: boolean;
+  status: "active" | "hidden";
+  created_at: string;
+  owner_name?: string | null;
+  new_enquiries?: number;
+};
+
+export type Enquiry = {
+  id: string;
+  listing_id: string;
+  from_user: string;
+  message: string;
+  contact: string;
+  start_date: string | null;
+  end_date: string | null;
+  people: number | null;
+  status: "new" | "replied" | "closed";
+  owner_reply: string | null;
+  replied_at: string | null;
+  created_at: string;
+  traveller?: string | null;
+  listing_name?: string | null;
 };
